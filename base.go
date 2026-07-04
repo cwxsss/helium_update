@@ -171,10 +171,12 @@ func baseScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 
 func syncHeliumInfo(data *SettingsData) error {
 	installPathHandle(data)
+	logger.Infof("checking update: installPath=%s, localVersion=%s", getString(data.installPath), getString(data.oldVer))
 	heliumInfo, err := getLatestHeliumInfo(data)
 	if err != nil {
 		return err
 	}
+	logger.Infof("latest Helium: version=%s, size=%d, urls=%v", heliumInfo.Version, heliumInfo.Size, heliumInfo.Urls)
 	data.curVer.Set(heliumInfo.Version)
 	data.fileSize.Set(formatFileSize(heliumInfo.Size))
 	data.fileSizeRaw.Set(int(heliumInfo.Size))
@@ -198,6 +200,7 @@ func execDownAndUnzip(data *SettingsData, downloadProgress *widget.ProgressBar, 
 	downloadErrorFlag.Store(false)
 	downloadProgress.SetValue(0)
 	fileName := filepath.Join(installRoot, getFileName(url))
+	logger.Infof("install start: installType=%d, installRoot=%s, appPath=%s, url=%s, fileName=%s", installType, installRoot, appPath, url, fileName)
 
 	dl := NewDownloader(data, url, fileName, 16, downloadProgress)
 	if fs, _ := data.fileSizeRaw.Get(); fs > 0 {
@@ -209,6 +212,7 @@ func execDownAndUnzip(data *SettingsData, downloadProgress *widget.ProgressBar, 
 		err := <-dl.Done
 		if err != nil {
 			logger.Errorf("Helium download failed: %v", err)
+			logger.Errorf("download context: url=%s, fileName=%s, useProxy=%v, proxyType=%s, proxy=%s", url, fileName, dl.UseProxy, getString(data.proxyType), getString(data.ghProxy))
 			downloadErrorFlag.Store(true)
 			fyne.DoAndWait(func() { downloadProgress.SetValue(0) })
 			defer data.checkBtnStatus.Set(false)
@@ -225,6 +229,7 @@ func execDownAndUnzip(data *SettingsData, downloadProgress *widget.ProgressBar, 
 			err := installHeliumPackage(fileName, appPath)
 			if err != nil {
 				logger.Errorf("Helium install failed: %v", err)
+				logger.Errorf("install context: package=%s, appPath=%s, installRoot=%s", fileName, appPath, installRoot)
 				downloadErrorFlag.Store(true)
 				fyne.DoAndWait(func() { downloadProgress.SetValue(0) })
 			} else {

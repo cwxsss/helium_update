@@ -20,6 +20,7 @@ const (
 
 func getLatestHeliumInfo(sd *SettingsData) (ChromeInfo, error) {
 	client, reqUrl := setProxy(sd, heliumWindowsReleaseAPI)
+	logger.Infof("request Helium release API: %s", reqUrl)
 	response, err := client.Get(reqUrl)
 	if err != nil {
 		logger.Errorln(err)
@@ -42,6 +43,7 @@ func getLatestHeliumInfo(sd *SettingsData) (ChromeInfo, error) {
 	assetIndex := selectHeliumAsset(release)
 	if assetIndex >= 0 {
 		asset := release.Assets[assetIndex]
+		logger.Infof("selected Helium asset: name=%s, size=%d, url=%s", asset.Name, asset.Size, asset.BrowserDownloadURL)
 		return ChromeInfo{
 			Version: release.TagName,
 			Size:    int64(asset.Size),
@@ -74,6 +76,7 @@ func selectHeliumAsset(release GithubRelease) int {
 }
 
 func installHeliumPackage(packagePath, targetDir string) error {
+	logger.Infof("install package: packagePath=%s, targetDir=%s", packagePath, targetDir)
 	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 		return err
 	}
@@ -87,10 +90,12 @@ func installHeliumPackage(packagePath, targetDir string) error {
 	if err = extractArchiveWith7Zip(packagePath, tempDir); err != nil {
 		return err
 	}
+	logger.Infof("extracted package to tempDir=%s", tempDir)
 	appDir, err := findHeliumApplicationDir(tempDir)
 	if err != nil {
 		return err
 	}
+	logger.Infof("found Helium application dir: %s", appDir)
 	if err = copyDirContents(appDir, targetDir); err != nil {
 		return err
 	}
@@ -109,6 +114,7 @@ func findHeliumApplicationDir(root string) (string, error) {
 			return nil
 		}
 		dir := filepath.Dir(path)
+		logger.Infof("found helium.exe candidate: %s", path)
 		if fallback == "" {
 			fallback = dir
 		}
@@ -178,6 +184,7 @@ func removeStaleHeliumPackages(dir string) {
 			continue
 		}
 		for _, match := range matches {
+			logger.Infof("remove stale Helium package: %s", match)
 			_ = os.Remove(match)
 		}
 	}
@@ -205,6 +212,7 @@ func extractArchiveWith7Zip(filePath, targetDir string) error {
 	}
 	cmd := exec.Command(zipExePath, "x", filePath, "-o"+targetDir, "-aoa", "-bb0")
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	logger.Infof("run extractor: %s", cmd.String())
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("7za extract failed: %w: %s", err, strings.TrimSpace(string(output)))
