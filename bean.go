@@ -70,6 +70,7 @@ type Config struct {
 	DataPath               string `json:"data_path"`
 	CachePath              string `json:"cache_path"`
 	InstallPath            string `json:"install_path"`              //安装目录
+	UpdaterDir             string `json:"updater_dir"`               //更新器所在目录
 	VersionBranch          string `json:"version_branch"`            //版本分支
 	HeliumPackageType      string `json:"helium_package_type"`       //Helium下载包类型
 	DownloadChannel        string `json:"download_channel"`          //下载通道

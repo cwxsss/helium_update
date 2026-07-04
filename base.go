@@ -447,3 +447,20 @@ func defaultInstallPath() string {
 	}
 	return dir
 }
+
+func samePath(a, b string) bool {
+	a = strings.TrimSpace(a)
+	b = strings.TrimSpace(b)
+	if a == "" || b == "" {
+		return false
+	}
+	absA, errA := filepath.Abs(a)
+	absB, errB := filepath.Abs(b)
+	if errA == nil {
+		a = absA
+	}
+	if errB == nil {
+		b = absB
+	}
+	return strings.EqualFold(filepath.Clean(a), filepath.Clean(b))
+}

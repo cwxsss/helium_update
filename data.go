@@ -46,7 +46,8 @@ func initData() *SettingsData {
 			logger.Errorln("解析 JSON 失败:", err)
 		}
 		logger.Debug(zap.Any("config", config))
-		if config.InstallPath != "" {
+		currentUpdaterDir := defaultInstallPath()
+		if config.InstallPath != "" && samePath(config.UpdaterDir, currentUpdaterDir) {
 			sd.installPath.Set(config.InstallPath)
 		}
 		if config.DataPath != "" {
@@ -77,6 +78,7 @@ func initData() *SettingsData {
 func saveConfig(data *SettingsData) error {
 	config := Config{
 		InstallPath:            getString(data.installPath),
+		UpdaterDir:             defaultInstallPath(),
 		DataPath:               getString(data.dataPath),
 		CachePath:              getString(data.cachePath),
 		VersionBranch:          getString(data.branch),
