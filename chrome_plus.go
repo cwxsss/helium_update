@@ -168,6 +168,7 @@ func installPlus(data *SettingsData, win fyne.Window) {
 		os.RemoveAll(filepath.Join(parentPath, plusArch))
 		fyne.DoAndWait(func() { plusDownloadProgress.SetValue(1) })
 		defer data.oldPlusVer.Set(getString(data.curPlusVer))
+		defer data.plusProcessStatus.Set(false)
 		defer data.plusBtnStatus.Set(false)
 		alertInfo(LoadString("InstalledMsg"), win)
 	}()
@@ -199,7 +200,7 @@ func setProxy(sd *SettingsData, reqUrl string) (*http.Client, string) {
 }
 
 func getChromePlusInfo(sd *SettingsData) (map[string]GithubRelease, []string, error) {
-	apiUrl := "https://raw.githubusercontent.com/libsgh/ghapi-json-generator/output/v2/repos/Bush2021/chrome_plus/releases%3Fper_page%3D10/data.json"
+	apiUrl := "https://api.github.com/repos/Bush2021/chrome_plus/releases?per_page=10"
 	client, reqUrl := setProxy(sd, apiUrl)
 	response, err := client.Get(reqUrl)
 	if err != nil {
@@ -207,10 +208,16 @@ func getChromePlusInfo(sd *SettingsData) (map[string]GithubRelease, []string, er
 		return nil, nil, err
 	}
 	defer response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return nil, nil, fmt.Errorf("unexpected status code: %d", response.StatusCode)
+	}
 	data, err := io.ReadAll(response.Body)
-	var githubReleases []GithubRelease
-	jsoniter.UnmarshalFromString(string(data), &githubReleases)
 	if err != nil {
+		logger.Errorln(err)
+		return nil, nil, err
+	}
+	var githubReleases []GithubRelease
+	if err = jsoniter.Unmarshal(data, &githubReleases); err != nil {
 		logger.Errorln(err)
 		return nil, nil, err
 	}
