@@ -16,6 +16,8 @@ import (
 const (
 	heliumWindowsReleaseAPI = "https://api.github.com/repos/imputnet/helium-windows/releases/latest"
 	heliumVersionMarker     = ".helium_updater_version"
+	heliumPackageTypeZip    = "ZIP portable"
+	heliumPackageTypeExe    = "EXE installer"
 )
 
 func getLatestHeliumInfo(sd *SettingsData) (ChromeInfo, error) {
@@ -40,7 +42,7 @@ func getLatestHeliumInfo(sd *SettingsData) (ChromeInfo, error) {
 		logger.Errorln(err)
 		return ChromeInfo{}, err
 	}
-	assetIndex := selectHeliumAsset(release)
+	assetIndex := selectHeliumAsset(release, getString(sd.heliumPackageType))
 	if assetIndex >= 0 {
 		asset := release.Assets[assetIndex]
 		logger.Infof("selected Helium asset: name=%s, size=%d, url=%s", asset.Name, asset.Size, asset.BrowserDownloadURL)
@@ -53,22 +55,29 @@ func getLatestHeliumInfo(sd *SettingsData) (ChromeInfo, error) {
 	return ChromeInfo{}, fmt.Errorf("no Helium Windows x64 asset found in release %s", release.TagName)
 }
 
-func selectHeliumAsset(release GithubRelease) int {
-	for i, asset := range release.Assets {
-		name := strings.ToLower(asset.Name)
-		if strings.Contains(name, "_x64-windows.zip") {
+func selectHeliumAsset(release GithubRelease, packageType string) int {
+	if packageType == heliumPackageTypeExe {
+		if i := findHeliumAsset(release, "_x64-installer.exe", true); i >= 0 {
+			return i
+		}
+		if i := findHeliumAsset(release, "_x64-windows.zip", false); i >= 0 {
+			return i
+		}
+	} else {
+		if i := findHeliumAsset(release, "_x64-windows.zip", false); i >= 0 {
+			return i
+		}
+		if i := findHeliumAsset(release, "_x64-installer.exe", true); i >= 0 {
 			return i
 		}
 	}
+	return findHeliumAsset(release, "_x64", true)
+}
+
+func findHeliumAsset(release GithubRelease, pattern string, excludeMini bool) int {
 	for i, asset := range release.Assets {
 		name := strings.ToLower(asset.Name)
-		if strings.Contains(name, "_x64-installer.exe") && !strings.Contains(name, "mini") {
-			return i
-		}
-	}
-	for i, asset := range release.Assets {
-		name := strings.ToLower(asset.Name)
-		if strings.Contains(name, "_x64") && !strings.Contains(name, "mini") {
+		if strings.Contains(name, pattern) && (!excludeMini || !strings.Contains(name, "mini")) {
 			return i
 		}
 	}
@@ -90,6 +99,9 @@ func installHeliumPackage(packagePath, targetDir string) error {
 	if err = extractArchiveWith7Zip(packagePath, tempDir); err != nil {
 		return err
 	}
+	if err = extractNestedHeliumArchive(tempDir); err != nil {
+		return err
+	}
 	logger.Infof("extracted package to tempDir=%s", tempDir)
 	appDir, err := findHeliumApplicationDir(tempDir)
 	if err != nil {
@@ -101,6 +113,26 @@ func installHeliumPackage(packagePath, targetDir string) error {
 	}
 	removeStaleHeliumPackages(targetDir)
 	return nil
+}
+
+func extractNestedHeliumArchive(root string) error {
+	var nestedArchive string
+	err := filepath.WalkDir(root, func(path string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !d.IsDir() && strings.EqualFold(d.Name(), "helium.7z") {
+			nestedArchive = path
+			return filepath.SkipAll
+		}
+		return nil
+	})
+	if err != nil || nestedArchive == "" {
+		return err
+	}
+	nestedTarget := filepath.Join(root, ".helium_nested")
+	logger.Infof("extract nested Helium archive: %s", nestedArchive)
+	return extractArchiveWith7Zip(nestedArchive, nestedTarget)
 }
 
 func findHeliumApplicationDir(root string) (string, error) {

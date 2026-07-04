@@ -256,6 +256,9 @@ func createDeskLnk(data *SettingsData) error {
 	parentPath, _ := data.installPath.Get()
 	exePath := findHeliumExecutable(parentPath)
 	if exePath != "" {
+		if err := ensureProfileDirs(data); err != nil {
+			return err
+		}
 		desktopPath, err := GetDesktopPath()
 		if err != nil {
 			logger.Debug(err)
@@ -263,7 +266,7 @@ func createDeskLnk(data *SettingsData) error {
 		}
 		logger.Debug("Desktop Path:", desktopPath)
 		linkPath := filepath.Join(desktopPath, "Helium.lnk")
-		err = makeLink(exePath, linkPath)
+		err = makeLink(exePath, linkPath, heliumShortcutArgs(data), filepath.Dir(exePath))
 		if err != nil {
 			logger.Debug(err)
 		}
@@ -278,6 +281,7 @@ func initInstallDirs(data *SettingsData) {
 	_ = os.MkdirAll(filepath.Join(root, "Cache"), os.ModePerm)
 	_ = os.MkdirAll(filepath.Join(root, "Data"), os.ModePerm)
 	_ = data.installPath.Set(filepath.Join(root, "Application"))
+	setDefaultProfileDirs(data)
 }
 
 func installRootFromPath(path string) string {
@@ -286,6 +290,56 @@ func installRootFromPath(path string) string {
 		return filepath.Dir(root)
 	}
 	return root
+}
+
+func defaultHeliumInstallRoot() string {
+	localAppData := os.Getenv("LOCALAPPDATA")
+	if localAppData == "" {
+		localAppData = os.TempDir()
+	}
+	return filepath.Join(localAppData, "imput", "Helium")
+}
+
+func defaultDataPath(installPath binding.String) string {
+	return filepath.Join(installRootFromPath(getString(installPath)), "Data")
+}
+
+func defaultCachePath(installPath binding.String) string {
+	return filepath.Join(installRootFromPath(getString(installPath)), "Cache")
+}
+
+func setDefaultProfileDirs(data *SettingsData) {
+	if strings.TrimSpace(getString(data.dataPath)) == "" {
+		_ = data.dataPath.Set(defaultDataPath(data.installPath))
+	}
+	if strings.TrimSpace(getString(data.cachePath)) == "" {
+		_ = data.cachePath.Set(defaultCachePath(data.installPath))
+	}
+}
+
+func ensureProfileDirs(data *SettingsData) error {
+	setDefaultProfileDirs(data)
+	for _, dir := range []string{getString(data.dataPath), getString(data.cachePath)} {
+		if strings.TrimSpace(dir) == "" {
+			continue
+		}
+		if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func heliumShortcutArgs(data *SettingsData) string {
+	setDefaultProfileDirs(data)
+	args := []string{}
+	if dataDir := strings.TrimSpace(getString(data.dataPath)); dataDir != "" {
+		args = append(args, fmt.Sprintf("--user-data-dir=%q", dataDir))
+	}
+	if cacheDir := strings.TrimSpace(getString(data.cachePath)); cacheDir != "" {
+		args = append(args, fmt.Sprintf("--disk-cache-dir=%q", cacheDir))
+	}
+	return strings.Join(args, " ")
 }
 
 var (

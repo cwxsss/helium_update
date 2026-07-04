@@ -21,6 +21,19 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 	installFileConfig := widget.NewCheckWithData(LoadString("BaseRemainInstallFiles"), data.remainInstallFileSettings)
 	historyVersionConfig := widget.NewCheckWithData(LoadString("BaseRemainHistoryFiles"), data.remainHistoryFileSettings)
 	downloadChromeViaProxy := widget.NewCheckWithData(LoadString("BaseDownloadChromeViaProxy"), data.downloadChromeViaProxy)
+	heliumPackageType := widget.NewSelect([]string{heliumPackageTypeZip, heliumPackageTypeExe}, func(value string) {
+		_ = data.heliumPackageType.Set(value)
+		if value == heliumPackageTypeExe {
+			_ = data.installPath.Set(filepath.Join(defaultHeliumInstallRoot(), "Application"))
+		}
+	})
+	heliumPackageType.Selected = getString(data.heliumPackageType)
+	if heliumPackageType.Selected == "" {
+		heliumPackageType.Selected = heliumPackageTypeZip
+		_ = data.heliumPackageType.Set(heliumPackageTypeZip)
+	} else if heliumPackageType.Selected == heliumPackageTypeExe {
+		_ = data.installPath.Set(filepath.Join(defaultHeliumInstallRoot(), "Application"))
+	}
 	proxyType := widget.NewSelect([]string{"GH-PROXY", "HTTP(S)", "SOCKS5"}, func(value string) {
 		_ = data.proxyType.Set(value)
 	})
@@ -72,6 +85,7 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 	return container.NewCenter(container.NewVBox(
 		widget.NewLabelWithStyle(LoadString("BaseSettingLabel"), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		container.NewGridWithColumns(3, installFileConfig, historyVersionConfig, downloadChromeViaProxy),
+		container.NewBorder(nil, nil, widget.NewLabel("Helium package"), nil, heliumPackageType),
 		container.NewBorder(nil, nil, proxyType, nil, ghProxyEntry),
 		widget.NewSeparator(),
 		widget.NewLabelWithStyle(LoadString("ThemeLabel"), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),

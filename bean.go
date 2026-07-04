@@ -31,9 +31,12 @@ type SysInfo struct {
 
 // 配置信息
 type SettingsData struct {
+	dataPath                  binding.String
+	cachePath                 binding.String
 	installPath               binding.String     //安装目录
 	oldVer                    binding.String     //旧版本号
 	branch                    binding.String     //版本分支
+	heliumPackageType         binding.String     //Helium下载包类型
 	curVer                    binding.String     //最新版本号
 	fileSize                  binding.String     //文件大小(格式化显示)
 	fileSizeRaw               binding.Int        //文件大小(原始字节)
@@ -64,8 +67,11 @@ type SettingsData struct {
 
 // 配置选项
 type Config struct {
+	DataPath               string `json:"data_path"`
+	CachePath              string `json:"cache_path"`
 	InstallPath            string `json:"install_path"`              //安装目录
 	VersionBranch          string `json:"version_branch"`            //版本分支
+	HeliumPackageType      string `json:"helium_package_type"`       //Helium下载包类型
 	DownloadChannel        string `json:"download_channel"`          //下载通道
 	OldPlusVer             string `json:"old_plus_ver"`              //已安装chrome_plus版本
 	ChromePlus             string `json:"chrome_plus"`               //chrome_plus

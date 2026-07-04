@@ -47,7 +47,16 @@ func initData() *SettingsData {
 		}
 		logger.Debug(zap.Any("config", config))
 		sd.installPath.Set(config.InstallPath)
+		if config.DataPath != "" {
+			sd.dataPath.Set(config.DataPath)
+		}
+		if config.CachePath != "" {
+			sd.cachePath.Set(config.CachePath)
+		}
 		sd.branch.Set(config.VersionBranch)
+		if config.HeliumPackageType != "" {
+			sd.heliumPackageType.Set(config.HeliumPackageType)
+		}
 		sd.urlKey.Set(config.DownloadChannel)
 		sd.remainInstallFileSettings.Set(config.RemainInstallFile)
 		sd.remainHistoryFileSettings.Set(config.RemainHistoryFile)
@@ -66,7 +75,10 @@ func initData() *SettingsData {
 func saveConfig(data *SettingsData) error {
 	config := Config{
 		InstallPath:            getString(data.installPath),
+		DataPath:               getString(data.dataPath),
+		CachePath:              getString(data.cachePath),
 		VersionBranch:          getString(data.branch),
+		HeliumPackageType:      getString(data.heliumPackageType),
 		DownloadChannel:        getString(data.urlKey),
 		RemainInstallFile:      getBool(data.remainInstallFileSettings),
 		RemainHistoryFile:      getBool(data.remainHistoryFileSettings),
@@ -109,7 +121,10 @@ func saveConfig(data *SettingsData) error {
 // 创建配置数据
 func createSettings() *SettingsData {
 	installPath := binding.NewString()
+	dataPath := binding.NewString()
+	cachePath := binding.NewString()
 	branch := binding.NewString()
+	heliumPackageType := binding.NewString()
 	oldVer := binding.NewString()
 	oldVer.Set("-")
 	curVer := binding.NewString()
@@ -123,7 +138,10 @@ func createSettings() *SettingsData {
 	SHA256.Set("-")
 	urlList := binding.NewStringList()
 	_ = installPath.Set(defaultInstallPath())
+	_ = dataPath.Set(defaultDataPath(installPath))
+	_ = cachePath.Set(defaultCachePath(installPath))
 	_ = branch.Set("stable")
+	_ = heliumPackageType.Set(heliumPackageTypeZip)
 	downBtnStatus := binding.NewBool()
 	downBtnStatus.Set(true) // 初始下载按钮状态
 	checkBtnStatus := binding.NewBool()
@@ -163,8 +181,11 @@ func createSettings() *SettingsData {
 	autoUpdate.Set(false)
 	return &SettingsData{
 		installPath:               installPath,
+		dataPath:                  dataPath,
+		cachePath:                 cachePath,
 		oldVer:                    oldVer,
 		branch:                    branch,
+		heliumPackageType:         heliumPackageType,
 		curVer:                    curVer,
 		fileSize:                  fileSize,
 		fileSizeRaw:               fileSizeRaw,
