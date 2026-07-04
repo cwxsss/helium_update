@@ -54,13 +54,13 @@ func getLatestHeliumInfo(sd *SettingsData) (ChromeInfo, error) {
 func selectHeliumAsset(release GithubRelease) int {
 	for i, asset := range release.Assets {
 		name := strings.ToLower(asset.Name)
-		if strings.Contains(name, "_x64-installer.exe") && !strings.Contains(name, "mini") {
+		if strings.Contains(name, "_x64-windows.zip") {
 			return i
 		}
 	}
 	for i, asset := range release.Assets {
 		name := strings.ToLower(asset.Name)
-		if strings.Contains(name, "_x64-windows.zip") {
+		if strings.Contains(name, "_x64-installer.exe") && !strings.Contains(name, "mini") {
 			return i
 		}
 	}
@@ -77,6 +77,7 @@ func installHeliumPackage(packagePath, targetDir string) error {
 	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
 		return err
 	}
+	removeStaleHeliumPackages(targetDir)
 	tempDir, err := os.MkdirTemp(filepath.Dir(targetDir), ".helium_extract_")
 	if err != nil {
 		return err
@@ -90,7 +91,11 @@ func installHeliumPackage(packagePath, targetDir string) error {
 	if err != nil {
 		return err
 	}
-	return copyDirContents(appDir, targetDir)
+	if err = copyDirContents(appDir, targetDir); err != nil {
+		return err
+	}
+	removeStaleHeliumPackages(targetDir)
+	return nil
 }
 
 func findHeliumApplicationDir(root string) (string, error) {
@@ -162,6 +167,22 @@ func copyFile(src, dst string) error {
 	return out.Close()
 }
 
+func removeStaleHeliumPackages(dir string) {
+	patterns := []string{
+		filepath.Join(dir, "helium_*installer.exe"),
+		filepath.Join(dir, "helium_*windows.zip"),
+	}
+	for _, pattern := range patterns {
+		matches, err := filepath.Glob(pattern)
+		if err != nil {
+			continue
+		}
+		for _, match := range matches {
+			_ = os.Remove(match)
+		}
+	}
+}
+
 func extractArchiveWith7Zip(filePath, targetDir string) error {
 	configPath := getConfigPath()
 	zipDir := filepath.Dir(configPath)
@@ -184,7 +205,11 @@ func extractArchiveWith7Zip(filePath, targetDir string) error {
 	}
 	cmd := exec.Command(zipExePath, "x", filePath, "-o"+targetDir, "-aoa", "-bb0")
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	return cmd.Run()
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("7za extract failed: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+	return nil
 }
 
 func readLocalHeliumVersion(sd *SettingsData) string {

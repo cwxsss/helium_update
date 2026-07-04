@@ -48,11 +48,25 @@ func baseScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 			folderBtn.Enable()
 		}
 	}))
-	checkBtn := widget.NewButtonWithIcon(LoadString("CheckBtnLabel"), theme.SearchIcon(), func() {
-		err := syncHeliumInfo(data)
-		if err != nil {
-			alertInfo(LoadString("UpdateCheckErrorMsg"), win)
-		}
+	var checkBtn *widget.Button
+	checkBtn = widget.NewButtonWithIcon(LoadString("CheckBtnLabel"), theme.SearchIcon(), func() {
+		installPathHandle(data)
+		checkBtn.Disable()
+		checkBtn.SetText(LoadString("CheckBtnLabel") + "...")
+		_ = data.curVer.Set("...")
+		go func() {
+			err := syncHeliumInfo(data)
+			fyne.DoAndWait(func() {
+				checkBtn.SetText(LoadString("CheckBtnLabel"))
+				if !getBool(data.checkBtnStatus) {
+					checkBtn.Enable()
+				}
+				if err != nil {
+					_ = data.curVer.Set("-")
+					alertInfo(LoadString("UpdateCheckErrorMsg"), win)
+				}
+			})
+		}()
 	})
 	createLnkBtn := widget.NewButtonWithIcon(LoadString("CreateLnkBtnLabel"), theme.ContentAddIcon(), func() {
 		err := createDeskLnk(data)
@@ -156,6 +170,7 @@ func baseScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 }
 
 func syncHeliumInfo(data *SettingsData) error {
+	installPathHandle(data)
 	heliumInfo, err := getLatestHeliumInfo(data)
 	if err != nil {
 		return err
