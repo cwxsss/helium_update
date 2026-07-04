@@ -300,20 +300,36 @@ func defaultHeliumInstallRoot() string {
 	return filepath.Join(localAppData, "imput", "Helium")
 }
 
-func defaultDataPath(installPath binding.String) string {
-	return filepath.Join(installRootFromPath(getString(installPath)), "Data")
+func defaultProfileRoot() string {
+	ex, err := os.Executable()
+	if err == nil {
+		exDir := filepath.Dir(ex)
+		parent := filepath.Dir(exDir)
+		if parent != "" && parent != "." {
+			return parent
+		}
+	}
+	wd, err := os.Getwd()
+	if err == nil {
+		return filepath.Dir(wd)
+	}
+	return os.TempDir()
 }
 
-func defaultCachePath(installPath binding.String) string {
-	return filepath.Join(installRootFromPath(getString(installPath)), "Cache")
+func defaultDataPath() string {
+	return filepath.Join(defaultProfileRoot(), "Data")
+}
+
+func defaultCachePath() string {
+	return filepath.Join(defaultProfileRoot(), "Cache")
 }
 
 func setDefaultProfileDirs(data *SettingsData) {
 	if strings.TrimSpace(getString(data.dataPath)) == "" {
-		_ = data.dataPath.Set(defaultDataPath(data.installPath))
+		_ = data.dataPath.Set(defaultDataPath())
 	}
 	if strings.TrimSpace(getString(data.cachePath)) == "" {
-		_ = data.cachePath.Set(defaultCachePath(data.installPath))
+		_ = data.cachePath.Set(defaultCachePath())
 	}
 }
 

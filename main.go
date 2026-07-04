@@ -20,8 +20,7 @@ func main() {
 		}
 	}()
 	ap := app.NewWithID("com.github.cwxsss.helium_updater")
-	//icon, _ := fyne.LoadResourceFromPath("./assets/img/chrome.ico")
-	ap.SetIcon(resourceAssetsImgChromePng)
+	ap.SetIcon(resourceAssetsImgHeliumUpdaterPng)
 	//t.SetFonts("./assets/font/MiSans-Regular.ttf", "")
 	InitLogger(level)
 	//初始化绑定数据

@@ -1,8 +1,8 @@
 Website = "https://github.com/cwxsss/helium_plus"
 
 [Details]
-  Icon = "assets/img/chrome.png"
+  Icon = "assets/img/helium_updater.png"
   Name = "helium_updater"
   ID = "com.github.cwxsss.helium_updater"
-  Version = "0.1.8"
+  Version = "0.1.9"
   Build = 0

@@ -138,10 +138,10 @@ func createSettings() *SettingsData {
 	SHA256.Set("-")
 	urlList := binding.NewStringList()
 	_ = installPath.Set(defaultInstallPath())
-	_ = dataPath.Set(defaultDataPath(installPath))
-	_ = cachePath.Set(defaultCachePath(installPath))
+	_ = dataPath.Set(defaultDataPath())
+	_ = cachePath.Set(defaultCachePath())
 	_ = branch.Set("stable")
-	_ = heliumPackageType.Set(heliumPackageTypeZip)
+	_ = heliumPackageType.Set(heliumPackageTypeExe)
 	downBtnStatus := binding.NewBool()
 	downBtnStatus.Set(true) // 初始下载按钮状态
 	checkBtnStatus := binding.NewBool()

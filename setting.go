@@ -29,8 +29,8 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 	})
 	heliumPackageType.Selected = getString(data.heliumPackageType)
 	if heliumPackageType.Selected == "" {
-		heliumPackageType.Selected = heliumPackageTypeZip
-		_ = data.heliumPackageType.Set(heliumPackageTypeZip)
+		heliumPackageType.Selected = heliumPackageTypeExe
+		_ = data.heliumPackageType.Set(heliumPackageTypeExe)
 	}
 	dataPathControl := folderPathControl(win, data.dataPath)
 	cachePathControl := folderPathControl(win, data.cachePath)
@@ -73,11 +73,12 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 	updateBtnText := binding.NewString()
 	updateBtnText.Set(LoadString("UpdaterCheckBtnLabel"))
 	newBtn := widget.NewButton(getString(updateBtnText), func() {
-		//_ = a.OpenURL(parseURL(url))
+		if getString(updateUrl) == "" {
+			go chromeUpdaterNew(data, updateUrl, newBtn, win)
+			return
+		}
 		UpdateSelf(a, data, getString(updateUrl), updateBtnText)
 	})
-	newBtn.Hide()
-	go chromeUpdaterNew(data, updateUrl, newBtn)
 	updateBtnText.AddListener(binding.NewDataListener(func() {
 		newBtn.SetText(getString(updateBtnText))
 	}))
@@ -178,12 +179,23 @@ func UpdateSelf(a fyne.App, sd *SettingsData, url string, btnText binding.String
 
 	dl.Start()
 }
-func chromeUpdaterNew(sd *SettingsData, updateUrl binding.String, newBtn *widget.Button) error {
+func chromeUpdaterNew(sd *SettingsData, updateUrl binding.String, newBtn *widget.Button, win fyne.Window) error {
+	fyne.DoAndWait(func() {
+		newBtn.Disable()
+		newBtn.SetText(LoadString("CheckBtnLabel") + "...")
+	})
+	defer fyne.DoAndWait(func() {
+		newBtn.Enable()
+	})
 	apiUrl := "https://api.github.com/repos/cwxsss/helium_plus/releases?per_page=10"
 	client, reqUrl := setProxy(sd, apiUrl)
 	response, err := client.Get(reqUrl)
 	if err != nil {
 		logger.Errorln(err)
+		fyne.DoAndWait(func() {
+			newBtn.SetText(LoadString("UpdaterCheckBtnLabel"))
+			alertInfo(LoadString("UpdateCheckErrorMsg"), win)
+		})
 		return err
 	}
 	defer response.Body.Close()
@@ -204,11 +216,15 @@ func chromeUpdaterNew(sd *SettingsData, updateUrl binding.String, newBtn *widget
 			}
 		}
 		hasNew := ver != lastedVer
-		if hasNew {
-			newBtn.Show()
-		} else {
-			newBtn.Hide()
-		}
+		fyne.DoAndWait(func() {
+			if hasNew && getString(updateUrl) != "" {
+				newBtn.SetText(LoadString("UpdaterUpdateBtnLabel"))
+			} else {
+				_ = updateUrl.Set("")
+				newBtn.SetText(LoadString("UpdaterCheckBtnLabel"))
+				alertInfo(LoadString("NoNeedUpdateMsg"), win)
+			}
+		})
 	}
 	return nil
 }
