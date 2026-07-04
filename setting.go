@@ -26,16 +26,11 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 	downloadChromeViaProxy := widget.NewCheckWithData(LoadString("BaseDownloadChromeViaProxy"), data.downloadChromeViaProxy)
 	heliumPackageType := widget.NewSelect([]string{heliumPackageTypeZip, heliumPackageTypeExe}, func(value string) {
 		_ = data.heliumPackageType.Set(value)
-		if value == heliumPackageTypeExe {
-			_ = data.installPath.Set(filepath.Join(defaultHeliumInstallRoot(), "Application"))
-		}
 	})
 	heliumPackageType.Selected = getString(data.heliumPackageType)
 	if heliumPackageType.Selected == "" {
 		heliumPackageType.Selected = heliumPackageTypeZip
 		_ = data.heliumPackageType.Set(heliumPackageTypeZip)
-	} else if heliumPackageType.Selected == heliumPackageTypeExe {
-		_ = data.installPath.Set(filepath.Join(defaultHeliumInstallRoot(), "Application"))
 	}
 	dataPathControl := folderPathControl(win, data.dataPath)
 	cachePathControl := folderPathControl(win, data.cachePath)

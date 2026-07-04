@@ -36,7 +36,6 @@ func main() {
 	chromeAutoUpdate(ap, win, data)
 	tabs := container.NewAppTabs(
 		container.NewTabItem(LoadString("TabMainLabel"), baseScreen(win, data)),
-		container.NewTabItem("Chrome++", chromePlusScreen(win, data)),
 		container.NewTabItem(LoadString("TabSettingLabel"), settingsScreen(ap, win, data)),
 	)
 	tabs.Refresh()
