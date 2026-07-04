@@ -74,7 +74,10 @@ func selectHeliumAsset(release GithubRelease) int {
 }
 
 func installHeliumPackage(packagePath, targetDir string) error {
-	tempDir, err := os.MkdirTemp(targetDir, ".helium_extract_")
+	if err := os.MkdirAll(targetDir, os.ModePerm); err != nil {
+		return err
+	}
+	tempDir, err := os.MkdirTemp(filepath.Dir(targetDir), ".helium_extract_")
 	if err != nil {
 		return err
 	}

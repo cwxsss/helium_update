@@ -174,14 +174,15 @@ func execDownAndUnzip(data *SettingsData, downloadProgress *widget.ProgressBar, 
 	data.checkBtnStatus.Set(true)
 	data.folderEntryStatus.Set(true)
 	data.processStatus.Set(true)
+	installRoot := installRootFromPath(getString(data.installPath))
 	if installType == 0 {
 		initInstallDirs(data)
 	}
+	appPath := getString(data.installPath)
 	url := getDownloadUrl(data.urlList)
-	parentPath, _ := data.installPath.Get()
 	downloadErrorFlag.Store(false)
 	downloadProgress.SetValue(0)
-	fileName := filepath.Join(parentPath, getFileName(url))
+	fileName := filepath.Join(installRoot, getFileName(url))
 
 	dl := NewDownloader(data, url, fileName, 16, downloadProgress)
 	if fs, _ := data.fileSizeRaw.Get(); fs > 0 {
@@ -206,7 +207,7 @@ func execDownAndUnzip(data *SettingsData, downloadProgress *widget.ProgressBar, 
 			fyne.DoAndWait(func() { downloadProgress.SetValue(0) })
 		} else {
 			fyne.DoAndWait(func() { downloadProgress.SetValue(0.95) })
-			err := installHeliumPackage(fileName, parentPath)
+			err := installHeliumPackage(fileName, appPath)
 			if err != nil {
 				logger.Errorf("Helium install failed: %v", err)
 				downloadErrorFlag.Store(true)
@@ -216,7 +217,7 @@ func execDownAndUnzip(data *SettingsData, downloadProgress *widget.ProgressBar, 
 					_ = os.Remove(fileName)
 				}
 				if !getBool(data.remainHistoryFileSettings) {
-					_ = os.RemoveAll(filepath.Join(parentPath, getString(data.oldVer)))
+					_ = os.RemoveAll(filepath.Join(appPath, getString(data.oldVer)))
 				}
 				fyne.DoAndWait(func() { downloadProgress.SetValue(1) })
 				writeLocalHeliumVersion(data)
@@ -252,14 +253,19 @@ func createDeskLnk(data *SettingsData) error {
 }
 
 func initInstallDirs(data *SettingsData) {
-	root := strings.TrimSpace(getString(data.installPath))
-	if strings.EqualFold(filepath.Base(root), "Application") {
-		root = filepath.Dir(root)
-	}
+	root := installRootFromPath(getString(data.installPath))
 	_ = os.MkdirAll(filepath.Join(root, "Application"), os.ModePerm)
 	_ = os.MkdirAll(filepath.Join(root, "Cache"), os.ModePerm)
 	_ = os.MkdirAll(filepath.Join(root, "Data"), os.ModePerm)
 	_ = data.installPath.Set(filepath.Join(root, "Application"))
+}
+
+func installRootFromPath(path string) string {
+	root := strings.TrimSpace(path)
+	if strings.EqualFold(filepath.Base(root), "Application") {
+		return filepath.Dir(root)
+	}
+	return root
 }
 
 var (
