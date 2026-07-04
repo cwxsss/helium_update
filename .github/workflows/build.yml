@@ -1,127 +1,63 @@
-name: Build
+name: Build Release
 
 on:
-  push:
-    paths-ignore:
-      - ".clang-format"
-      - ".gitignore"
-      - "*.md"
-      - "LICENSE"
-      - "setdll/**"
-      - "src/version.h"
-      - ".github/ISSUE_TEMPLATE/**"
-      - ".github/workflows/delete_old_workflow_runs.yml"
-      - ".github/workflows/genReleaseNote.sh"
+  release:
+    types: [created]
   workflow_dispatch:
-    inputs:
-      version:
-        description: 'Release version (SemVer)'
-        required: false
-      build_mode:
-        description: 'Build mode'
-        required: false
-        default: 'release'
-        type: choice
-        options:
-          - release
-          - debug
+
+permissions:
+  contents: write
 
 jobs:
-  build:
+  Build:
+    runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        include:
-          - name: build_x64
-            arch: x64
-
-    name: ${{ matrix.name }}
-    runs-on: windows-latest
-
+        arch: ['amd64']
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v6
         with:
-          submodules: 'true'
-
-      - name: Update version.h
-        shell: bash
-        run: |
-          COMMIT_HASH=$(git rev-parse --short HEAD)
-          VERSION="alpha-${COMMIT_HASH}"
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          sed -i '/#define RELEASE_VER_STR/,/RELEASE_VER_PRE_SUFFIX/c\#define RELEASE_VER_STR "'"$VERSION"'"' src/version.h
-
-      - name: Set Build Mode
-        shell: bash
-        run: |
-          BUILD_MODE="release"
-          echo "BUILD_MODE=$BUILD_MODE" >> $GITHUB_ENV
-
-      - name: Setup Xmake
-        uses: xmake-io/github-action-setup-xmake@v1
+          persist-credentials: false
+      - uses: WillAbides/setup-go-faster@v1.19.0
         with:
-          xmake-version: '3.0.5'
-
-      - name: Install LLVM (clang-cl)
-        shell: powershell
-        run: choco install llvm -y --no-progress
-
-      - name: Build Chrome++
-        shell: powershell
-        run: |
-          # Refresh PATH
-          $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
-          $clangBin = Split-Path -Parent (Get-Command clang-cl.exe -ErrorAction SilentlyContinue).Source
-          Write-Host "clang-cl found at: $clangBin"
-          xmake f -m ${{ env.BUILD_MODE }} -a x64 --toolchain=clang-cl --bin="$clangBin" --yes
-          xmake
-
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v6
+          go-version: 'stable'
+      - name: Setup Env
+        run: >-
+          sudo apt-get update &&
+          sudo apt-get install -y
+          bc gcc libgl1-mesa-dev libwayland-dev libx11-dev libxkbcommon-dev xorg-dev xvfb
+      - name: Setup fyne
+        run: go install github.com/fyne-io/fyne-cross@latest
+      - name: Install UPX
+        uses: crazy-max/ghaction-upx@v4
         with:
-          name: version-${{ matrix.arch }}${{ env.BUILD_MODE == 'debug' && '-debug' || '' }}-${{ env.VERSION }}
-          path: build/${{ env.BUILD_MODE }}/*
+          install-only: true
+      - name: Package
+        run: fyne-cross windows -arch=${{ matrix.arch }}
+      - name: Compress
+        run: |
+          mkdir -p ${GITHUB_WORKSPACE}/dist
+          unzip ${GITHUB_WORKSPACE}/fyne-cross/dist/windows-${{ matrix.arch }}/helium_updater.exe.zip -d ${GITHUB_WORKSPACE}/fyne-cross/dist/windows-${{ matrix.arch }}
+          mv -f ${GITHUB_WORKSPACE}/fyne-cross/dist/windows-${{ matrix.arch }}/helium_updater.exe ${GITHUB_WORKSPACE}/dist/helium_updater.exe
+          upx -9 ${GITHUB_WORKSPACE}/dist/helium_updater.exe
+          zip -rj ${GITHUB_WORKSPACE}/dist/helium_updater-windows-${{ matrix.arch }}.zip ${GITHUB_WORKSPACE}/dist/helium_updater.exe
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: package-${{ matrix.arch }}
+          path: dist/helium_updater-windows-${{ matrix.arch }}.zip
 
-  create_pr:
-    needs: build
-    runs-on: ubuntu-slim
-    if: github.event_name == 'workflow_dispatch' && github.event.inputs.version != ''
-
+  Release:
+    needs: Build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Set up Git Configurations
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git checkout -b release
-
-      - name: Update version.h
-        run: |
-          VERSION="${{ github.event.inputs.version }}"
-          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
-            echo "Invalid version '$VERSION'. Expected SemVer like 1.2.3 or 1.2.3-alpha.1" >&2
-            exit 1
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          CORE="${VERSION%%-*}"
-          PRE="${VERSION#*-}"
-          if [ "$PRE" = "$VERSION" ]; then PRE_SUFFIX=""; else PRE_SUFFIX="-$PRE"; fi
-          IFS='.' read -r MAJOR MINOR PATCH <<< "$CORE"
-          sed -i 's/#define RELEASE_VER_MAIN .*/#define RELEASE_VER_MAIN '"$MAJOR"'/' src/version.h
-          sed -i 's/#define RELEASE_VER_SUB .*/#define RELEASE_VER_SUB '"$MINOR"'/' src/version.h
-          sed -i 's/#define RELEASE_VER_FIX .*/#define RELEASE_VER_FIX '"$PATCH"'/' src/version.h
-          sed -i 's|#define RELEASE_VER_PRE_SUFFIX .*|#define RELEASE_VER_PRE_SUFFIX "'"$PRE_SUFFIX"'"|' src/version.h
-          git add src/version.h
-          git commit -m "build(release): bump version to $VERSION" -m "Build-Run-Id: ${{ github.run_id }}"
-          git push origin release --force
-
-      - name: Create Pull Request
-        env:
-          GITHUB_TOKEN: ${{ secrets.TOKEN }}
-        run: |
-          gh pr create --base main --head release --title "build(release): bump version to ${{ github.event.inputs.version }}" --body "Bump version to ${{ github.event.inputs.version }}"
-
-      - name: Output Run ID
-        run: echo "RUN_ID=${{ github.run_id }}" >> $GITHUB_OUTPUT
+      - name: Download Artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+      - name: Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/**/*

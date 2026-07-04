@@ -1,5 +1,0 @@
-# https://clang.llvm.org/docs/ClangFormatStyleOptions.html
-
-Language: Cpp
-BasedOnStyle: Chromium
-Standard: Latest
