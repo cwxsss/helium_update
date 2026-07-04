@@ -110,11 +110,11 @@ func findHeliumApplicationDir(root string) (string, error) {
 		if err != nil {
 			return err
 		}
-		if d.IsDir() || !strings.EqualFold(d.Name(), "helium.exe") {
+		if d.IsDir() || !isHeliumExecutableName(d.Name()) {
 			return nil
 		}
 		dir := filepath.Dir(path)
-		logger.Infof("found helium.exe candidate: %s", path)
+		logger.Infof("found Helium executable candidate: %s", path)
 		if fallback == "" {
 			fallback = dir
 		}
@@ -133,7 +133,7 @@ func findHeliumApplicationDir(root string) (string, error) {
 	if fallback != "" {
 		return fallback, nil
 	}
-	return "", fmt.Errorf("helium.exe not found in extracted package")
+	return "", fmt.Errorf("Helium executable not found in extracted package")
 }
 
 func copyDirContents(src, dst string) error {
@@ -228,10 +228,38 @@ func readLocalHeliumVersion(sd *SettingsData) string {
 			return version
 		}
 	}
-	return GetVersion(sd, "helium.exe")
+	for _, exeName := range heliumExecutableNames() {
+		if version := GetVersion(sd, exeName); version != "-" {
+			return version
+		}
+	}
+	return "-"
 }
 
 func writeLocalHeliumVersion(sd *SettingsData) {
 	parentPath := getString(sd.installPath)
 	_ = os.WriteFile(filepath.Join(parentPath, heliumVersionMarker), []byte(getString(sd.curVer)), 0644)
+}
+
+func heliumExecutableNames() []string {
+	return []string{"helium.exe", "chrome.exe"}
+}
+
+func isHeliumExecutableName(name string) bool {
+	for _, exeName := range heliumExecutableNames() {
+		if strings.EqualFold(name, exeName) {
+			return true
+		}
+	}
+	return false
+}
+
+func findHeliumExecutable(dir string) string {
+	for _, exeName := range heliumExecutableNames() {
+		exePath := filepath.Join(dir, exeName)
+		if fileExist(exePath) {
+			return exePath
+		}
+	}
+	return ""
 }

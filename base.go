@@ -83,7 +83,7 @@ func baseScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 			alertInfo(LoadString("NoNeedUpdateMsg"), win)
 		} else {
 			parentPath, _ := data.installPath.Get()
-			heliumInUse := isProcessExist(filepath.Join(parentPath, "helium.exe"))
+			heliumInUse := isHeliumProcessExist(parentPath)
 			if heliumInUse {
 				alertInfo(LoadString("HeliumRunningMsg"), win)
 			} else if runFlag == 1 {
@@ -254,8 +254,8 @@ func execDownAndUnzip(data *SettingsData, downloadProgress *widget.ProgressBar, 
 
 func createDeskLnk(data *SettingsData) error {
 	parentPath, _ := data.installPath.Get()
-	exePath := filepath.Join(parentPath, "helium.exe")
-	if fileExist(exePath) {
+	exePath := findHeliumExecutable(parentPath)
+	if exePath != "" {
 		desktopPath, err := GetDesktopPath()
 		if err != nil {
 			logger.Debug(err)
@@ -313,7 +313,7 @@ func installPathHandle(data *SettingsData) {
 		_ = data.oldVer.Set("-")
 		return
 	}
-	if appDir := filepath.Join(dir, "Application"); fileExist(filepath.Join(appDir, "helium.exe")) {
+	if appDir := filepath.Join(dir, "Application"); findHeliumExecutable(appDir) != "" {
 		dir = appDir
 		_ = data.installPath.Set(dir)
 	}
@@ -335,7 +335,7 @@ func installPathHandle(data *SettingsData) {
 	v := ""
 	for _, fileInfo := range fileInfos {
 		name := fileInfo.Name()
-		if strings.EqualFold(name, "helium.exe") {
+		if isHeliumExecutableName(name) {
 			result = true
 		}
 		if fileInfo.IsDir() && isNumeric(strings.ReplaceAll(name, ".", "")) {
@@ -355,6 +355,15 @@ func installPathHandle(data *SettingsData) {
 	if getBool(data.downBtnStatus) {
 		data.checkBtnStatus.Set(false)
 	}
+}
+
+func isHeliumProcessExist(appDir string) bool {
+	for _, exeName := range heliumExecutableNames() {
+		if isProcessExist(filepath.Join(appDir, exeName)) {
+			return true
+		}
+	}
+	return false
 }
 
 func defaultInstallPath() string {
