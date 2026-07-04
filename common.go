@@ -564,7 +564,7 @@ func UnCompressBy7Zip(filePath, targetDir string) {
 	}
 }
 
-func makeLink(src, dst string) error {
+func makeLink(src, dst, args, workingDir string) error {
 	defer ole.CoUninitialize()
 	err := ole.CoInitializeEx(0, ole.COINIT_APARTMENTTHREADED|ole.COINIT_SPEED_OVER_MEMORY)
 	if err != nil {
@@ -588,6 +588,18 @@ func makeLink(src, dst string) error {
 	_, err = oleutil.PutProperty(dispatch, "TargetPath", src)
 	if err != nil {
 		return err
+	}
+	if args != "" {
+		_, err = oleutil.PutProperty(dispatch, "Arguments", args)
+		if err != nil {
+			return err
+		}
+	}
+	if workingDir != "" {
+		_, err = oleutil.PutProperty(dispatch, "WorkingDirectory", workingDir)
+		if err != nil {
+			return err
+		}
 	}
 	_, err = oleutil.CallMethod(dispatch, "Save")
 	if err != nil {

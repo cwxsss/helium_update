@@ -13,6 +13,9 @@ import (
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/data/binding"
+	"fyne.io/fyne/v2/dialog"
+	"fyne.io/fyne/v2/storage"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 	jsoniter "github.com/json-iterator/go"
 )
@@ -34,6 +37,8 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 	} else if heliumPackageType.Selected == heliumPackageTypeExe {
 		_ = data.installPath.Set(filepath.Join(defaultHeliumInstallRoot(), "Application"))
 	}
+	dataPathControl := folderPathControl(win, data.dataPath)
+	cachePathControl := folderPathControl(win, data.cachePath)
 	proxyType := widget.NewSelect([]string{"GH-PROXY", "HTTP(S)", "SOCKS5"}, func(value string) {
 		_ = data.proxyType.Set(value)
 	})
@@ -86,6 +91,8 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 		widget.NewLabelWithStyle(LoadString("BaseSettingLabel"), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
 		container.NewGridWithColumns(3, installFileConfig, historyVersionConfig, downloadChromeViaProxy),
 		container.NewBorder(nil, nil, widget.NewLabel("Helium package"), nil, heliumPackageType),
+		container.NewBorder(nil, nil, widget.NewLabel("Data directory"), nil, dataPathControl),
+		container.NewBorder(nil, nil, widget.NewLabel("Cache directory"), nil, cachePathControl),
 		container.NewBorder(nil, nil, proxyType, nil, ghProxyEntry),
 		widget.NewSeparator(),
 		widget.NewLabelWithStyle(LoadString("ThemeLabel"), fyne.TextAlignLeading, fyne.TextStyle{Bold: true}),
@@ -110,6 +117,25 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 			widget.NewHyperlink("LICENSE", parseURL("https://github.com/cwxsss/helium_plus/blob/main/LICENSE")),
 		),
 	))
+}
+
+func folderPathControl(win fyne.Window, value binding.String) fyne.CanvasObject {
+	entry := widget.NewEntryWithData(value)
+	btn := widget.NewButtonWithIcon("", theme.FolderOpenIcon(), func() {
+		folderDialog := dialog.NewFolderOpen(func(lu fyne.ListableURI, err error) {
+			if err == nil && lu != nil {
+				_ = value.Set(lu.Path())
+			}
+		}, win)
+		currentPath := strings.TrimSpace(getString(value))
+		if currentPath != "" {
+			if listableURI, err := storage.ListerForURI(storage.NewFileURI(currentPath)); err == nil {
+				folderDialog.SetLocation(listableURI)
+			}
+		}
+		folderDialog.Show()
+	})
+	return container.NewBorder(nil, nil, btn, nil, entry)
 }
 
 func UpdateSelf(a fyne.App, sd *SettingsData, url string, btnText binding.String) {
