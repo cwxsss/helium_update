@@ -12,42 +12,34 @@ permissions:
 
 jobs:
   windows-x64:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       - name: Setup Go
-        uses: actions/setup-go@v5
+        uses: WillAbides/setup-go-faster@v1.19.0
         with:
-          go-version: '1.24.6'
-          cache: true
+          go-version: stable
 
-      - name: Setup MSYS2
-        uses: msys2/setup-msys2@v2
-        with:
-          msystem: MINGW64
-          update: true
-          install: >-
-            mingw-w64-x86_64-gcc
-            mingw-w64-x86_64-pkgconf
-            zip
+      - name: Setup Env
+        run: >-
+          sudo apt-get update &&
+          sudo apt-get install -y
+          bc gcc libgl1-mesa-dev libwayland-dev libx11-dev libxkbcommon-dev xorg-dev xvfb unzip zip
 
-      - name: Test
-        shell: pwsh
-        run: |
-          $env:Path = "C:\msys64\mingw64\bin;$env:Path"
-          $env:CGO_ENABLED = "1"
-          go test ./...
+      - name: Setup fyne-cross
+        run: go install github.com/fyne-io/fyne-cross@latest
 
       - name: Build
-        shell: pwsh
         run: |
-          $env:Path = "C:\msys64\mingw64\bin;$env:Path"
-          $env:CGO_ENABLED = "1"
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          go build -trimpath -ldflags="-s -w -H windowsgui" -o dist/helium_updater.exe .
-          Compress-Archive -Force -Path dist/helium_updater.exe -DestinationPath dist/helium_updater-windows-amd64.zip
+          fyne-cross windows -arch=amd64
+
+      - name: Package
+        run: |
+          mkdir -p dist fyne-cross/dist/windows-amd64/unpacked
+          unzip fyne-cross/dist/windows-amd64/helium_updater.exe.zip -d fyne-cross/dist/windows-amd64/unpacked
+          zip -rj dist/helium_updater-windows-amd64.zip fyne-cross/dist/windows-amd64/unpacked/helium_updater.exe
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
