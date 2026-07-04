@@ -72,7 +72,8 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 	updateUrl := binding.NewString()
 	updateBtnText := binding.NewString()
 	updateBtnText.Set(LoadString("UpdaterCheckBtnLabel"))
-	newBtn := widget.NewButton(getString(updateBtnText), func() {
+	var newBtn *widget.Button
+	newBtn = widget.NewButton(getString(updateBtnText), func() {
 		if getString(updateUrl) == "" {
 			go chromeUpdaterNew(data, updateUrl, newBtn, win)
 			return
