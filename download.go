@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -229,11 +227,7 @@ func (d *Downloader) downloadChunk(start int64) error {
 
 	reqURL := d.URL
 	if d.UseProxy && d.sd != nil {
-		if proxy := getString(d.sd.ghProxy); proxy != "" {
-			if getString(d.sd.proxyType) == "GH-PROXY" {
-				reqURL = pathJoin(proxy, reqURL)
-			}
-		}
+		reqURL = rewriteWithGithubProxy(d.sd, reqURL)
 	}
 
 	req, err := http.NewRequestWithContext(d.ctx, "GET", reqURL, nil)
@@ -273,51 +267,16 @@ func (d *Downloader) downloadChunk(start int64) error {
 }
 
 func (d *Downloader) newHTTPClient() *http.Client {
-	transport := &http.Transport{
-		MaxIdleConns:          100,
-		MaxIdleConnsPerHost:   20,
-		IdleConnTimeout:       90 * time.Second,
-		TLSHandshakeTimeout:   10 * time.Second,
-		ExpectContinueTimeout: 1 * time.Second,
-		DisableCompression:    false,
-		ForceAttemptHTTP2:     true,
-	}
-
 	if d.UseProxy && d.sd != nil {
-		ghProxy := getString(d.sd.ghProxy)
-		proxyType := getString(d.sd.proxyType)
-		logger.Infof("HTTP客户端代理配置: proxyType=%s, ghProxy=%s", proxyType, ghProxy)
-		if ghProxy != "" && proxyType != "GH-PROXY" {
-			if proxyType == "HTTP(S)" && !strings.HasPrefix(ghProxy, "http") {
-				ghProxy = "http://" + ghProxy
-			} else if proxyType == "SOCKS5" && !strings.HasPrefix(ghProxy, "socks5") {
-				ghProxy = "socks5://" + ghProxy
-			}
-			if u, err := url.Parse(ghProxy); err == nil {
-				transport.Proxy = http.ProxyURL(u)
-				logger.Infof("已设置代理: %s", ghProxy)
-			} else {
-				logger.Warnf("代理URL解析失败: %s, err=%v", ghProxy, err)
-			}
-		} else {
-			logger.Infof("未设置代理 (proxyType=%s 或 ghProxy为空)", proxyType)
-		}
+		return newHTTPClientWithProxy(d.sd, 60*time.Second)
 	}
-
-	return &http.Client{
-		Transport: transport,
-		Timeout:   60 * time.Second,
-	}
+	return newHTTPClientWithProxy(nil, 60*time.Second)
 }
 
 func (d *Downloader) getFileSize() (int64, error) {
 	reqURL := d.URL
 	if d.UseProxy && d.sd != nil {
-		if proxy := getString(d.sd.ghProxy); proxy != "" {
-			if getString(d.sd.proxyType) == "GH-PROXY" {
-				reqURL = pathJoin(proxy, reqURL)
-			}
-		}
+		reqURL = rewriteWithGithubProxy(d.sd, reqURL)
 	}
 	req, err := http.NewRequestWithContext(d.ctx, "HEAD", reqURL, nil)
 	if err != nil {

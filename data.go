@@ -122,7 +122,7 @@ func createSettings() *SettingsData {
 	SHA256 := binding.NewString()
 	SHA256.Set("-")
 	urlList := binding.NewStringList()
-	_ = installPath.Set("请配置Helium Application目录")
+	_ = installPath.Set(defaultInstallPath())
 	_ = branch.Set("stable")
 	downBtnStatus := binding.NewBool()
 	downBtnStatus.Set(true) // 初始下载按钮状态
@@ -157,7 +157,7 @@ func createSettings() *SettingsData {
 	ghProxy := binding.NewString()
 	ghProxy.Set("")
 	proxyType := binding.NewString()
-	proxyType.Set("GH-PROXY")
+	proxyType.Set(proxyTypeHTTP)
 	downloadChromeViaProxy := binding.NewBool()
 	autoUpdate := binding.NewBool()
 	autoUpdate.Set(false)

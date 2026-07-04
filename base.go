@@ -252,10 +252,14 @@ func createDeskLnk(data *SettingsData) error {
 }
 
 func initInstallDirs(data *SettingsData) {
-	_ = os.Mkdir(filepath.Join(getString(data.installPath), "Application"), os.ModePerm)
-	_ = os.Mkdir(filepath.Join(getString(data.installPath), "Cache"), os.ModePerm)
-	_ = os.Mkdir(filepath.Join(getString(data.installPath), "Data"), os.ModePerm)
-	_ = data.installPath.Set(filepath.Join(getString(data.installPath), "Application"))
+	root := strings.TrimSpace(getString(data.installPath))
+	if strings.EqualFold(filepath.Base(root), "Application") {
+		root = filepath.Dir(root)
+	}
+	_ = os.MkdirAll(filepath.Join(root, "Application"), os.ModePerm)
+	_ = os.MkdirAll(filepath.Join(root, "Cache"), os.ModePerm)
+	_ = os.MkdirAll(filepath.Join(root, "Data"), os.ModePerm)
+	_ = data.installPath.Set(filepath.Join(root, "Application"))
 }
 
 var (
@@ -273,24 +277,33 @@ func getDownloadUrl(list binding.StringList) string {
 }
 
 func installPathHandle(data *SettingsData) {
-	p, _ := data.installPath.Get()
-	dir, err := os.Getwd()
-	if isValidPath(p) {
-		dir = p
-	} else {
-		data.installPath.Set(dir)
+	dir := strings.TrimSpace(getString(data.installPath))
+	if dir == "" {
+		_ = data.oldVer.Set("-")
+		return
 	}
-	if err != nil {
-		logger.Panic(err)
+	dir = filepath.Clean(dir)
+	if !dirExist(dir) {
+		_ = data.oldVer.Set("-")
+		return
 	}
+	if appDir := filepath.Join(dir, "Application"); fileExist(filepath.Join(appDir, "helium.exe")) {
+		dir = appDir
+		_ = data.installPath.Set(dir)
+	}
+
 	dirHandle, err := os.Open(dir)
 	if err != nil {
-		logger.Panic(err)
+		logger.Warnf("open install path failed: %s, err=%v", dir, err)
+		_ = data.oldVer.Set("-")
+		return
 	}
 	defer dirHandle.Close()
 	fileInfos, err := dirHandle.Readdir(-1)
 	if err != nil {
-		logger.Panic(err)
+		logger.Warnf("read install path failed: %s, err=%v", dir, err)
+		_ = data.oldVer.Set("-")
+		return
 	}
 	result := false
 	v := ""
@@ -316,4 +329,19 @@ func installPathHandle(data *SettingsData) {
 	if getBool(data.downBtnStatus) {
 		data.checkBtnStatus.Set(false)
 	}
+}
+
+func defaultInstallPath() string {
+	localAppData := os.Getenv("LOCALAPPDATA")
+	if localAppData != "" {
+		dir := filepath.Join(localAppData, "imput", "Helium", "Application")
+		if dirExist(dir) {
+			return dir
+		}
+	}
+	dir, err := os.Getwd()
+	if err != nil {
+		return ""
+	}
+	return dir
 }

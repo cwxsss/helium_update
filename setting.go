@@ -26,8 +26,8 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 	})
 	proxyTypeVal := getString(data.proxyType)
 	if proxyTypeVal == "" {
-		proxyType.Selected = "GH-PROXY"
-		_ = data.proxyType.Set("GH-PROXY")
+		proxyType.Selected = proxyTypeHTTP
+		_ = data.proxyType.Set(proxyTypeHTTP)
 	} else {
 		proxyType.Selected = getString(data.proxyType)
 	}

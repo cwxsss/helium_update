@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -176,27 +174,7 @@ func installPlus(data *SettingsData, win fyne.Window) {
 	dl.Start()
 }
 func setProxy(sd *SettingsData, reqUrl string) (*http.Client, string) {
-	ghProxy := getString(sd.ghProxy)
-	client := http.Client{Timeout: time.Second * time.Duration(5), Transport: &http.Transport{
-		Proxy: GetProxyURL(),
-	}}
-	if ghProxy != "" {
-		if getString(sd.proxyType) == "GH-PROXY" {
-			reqUrl = pathJoin(ghProxy, reqUrl)
-		} else {
-			if getString(sd.proxyType) == "HTTP(S)" && !strings.HasPrefix(ghProxy, "http") {
-				ghProxy = "http://" + ghProxy
-			} else if getString(sd.proxyType) == "SOCKS5" && !strings.HasPrefix(ghProxy, "socks5") {
-				ghProxy = "socks5://" + ghProxy
-			}
-			urli := url.URL{}
-			urlproxy, _ := urli.Parse(ghProxy)
-			client.Transport = &http.Transport{
-				Proxy: http.ProxyURL(urlproxy),
-			}
-		}
-	}
-	return &client, reqUrl
+	return newHTTPClientWithProxy(sd, 5*time.Second), rewriteWithGithubProxy(sd, reqUrl)
 }
 
 func getChromePlusInfo(sd *SettingsData) (map[string]GithubRelease, []string, error) {
