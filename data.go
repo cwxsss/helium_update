@@ -46,7 +46,9 @@ func initData() *SettingsData {
 			logger.Errorln("解析 JSON 失败:", err)
 		}
 		logger.Debug(zap.Any("config", config))
-		sd.installPath.Set(config.InstallPath)
+		if config.InstallPath != "" {
+			sd.installPath.Set(config.InstallPath)
+		}
 		if config.DataPath != "" {
 			sd.dataPath.Set(config.DataPath)
 		}

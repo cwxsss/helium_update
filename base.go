@@ -437,12 +437,9 @@ func isHeliumProcessExist(appDir string) bool {
 }
 
 func defaultInstallPath() string {
-	localAppData := os.Getenv("LOCALAPPDATA")
-	if localAppData != "" {
-		dir := filepath.Join(localAppData, "imput", "Helium", "Application")
-		if dirExist(dir) {
-			return dir
-		}
+	ex, err := os.Executable()
+	if err == nil {
+		return filepath.Dir(ex)
 	}
 	dir, err := os.Getwd()
 	if err != nil {
