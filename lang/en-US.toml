@@ -1,5 +1,6 @@
 TitleLabel = "Helium Updater"
 TabMainLabel = "Main"
+TabChromePlusLabel = "Chrome++"
 TabSettingLabel  = "Settings"
 InstallLabel = "Install directory"
 BranchLabel = "Enhancement"

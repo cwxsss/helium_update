@@ -1,5 +1,6 @@
 TitleLabel = "Helium更新器"
 TabMainLabel = "主程序"
+TabChromePlusLabel = "Chrome++"
 TabSettingLabel  = "设置"
 InstallLabel = "安装目录"
 BranchLabel = "增强组件"
