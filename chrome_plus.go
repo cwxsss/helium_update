@@ -89,13 +89,13 @@ func chromePlusScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 	plusDownloadProgress = widget.NewProgressBar()
 	plusDownloadProgress.TextFormatter = func() string {
 		if plusDownloadError.Load() {
-			return "下载失败，请稍后重试"
+			return LoadString("DownloadFailedMsg")
 		} else if plusDownloadProgress.Max*0.9 == plusDownloadProgress.Value {
-			return fmt.Sprintf(LoadString("PlusDownloadedMsg"))
+			return LoadString("PlusDownloadedMsg")
 		} else if plusDownloadProgress.Max == plusDownloadProgress.Value {
-			return "安装完成"
+			return LoadString("InstalledMsg")
 		}
-		return fmt.Sprintf(LoadString("PlusDownloadingMsg"))
+		return LoadString("PlusDownloadingMsg")
 	}
 	data.plusProcessStatus.AddListener(binding.NewDataListener(func() {
 		if getBool(data.plusProcessStatus) {
