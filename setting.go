@@ -103,15 +103,15 @@ func settingsScreen(a fyne.App, win fyne.Window, data *SettingsData) fyne.Canvas
 			widget.NewLabel(LoadString("VersionLabel")+": v"+fyne.CurrentApp().Metadata().Version),
 			newBtn,
 			widget.NewButton(LoadString("IssuesLabel"), func() {
-				_ = a.OpenURL(parseURL("https://github.com/cwxsss/helium_plus/issues"))
+				_ = a.OpenURL(parseURL("https://github.com/cwxsss/helium_update/issues"))
 			}),
 		),
 		container.NewHBox(
 			widget.NewHyperlink(LoadString("OfflinePkgLabel"), parseURL("https://github.com/imputnet/helium-windows/releases/latest")),
 			widget.NewLabel("-"),
-			widget.NewHyperlink("GitHub", parseURL("https://github.com/cwxsss/helium_plus")),
+			widget.NewHyperlink("GitHub", parseURL("https://github.com/cwxsss/helium_update")),
 			widget.NewLabel("-"),
-			widget.NewHyperlink("LICENSE", parseURL("https://github.com/cwxsss/helium_plus/blob/main/LICENSE")),
+			widget.NewHyperlink("LICENSE", parseURL("https://github.com/cwxsss/helium_update/blob/main/LICENSE")),
 		),
 	))
 }
@@ -188,7 +188,7 @@ func chromeUpdaterNew(sd *SettingsData, updateUrl binding.String, newBtn *widget
 	defer fyne.DoAndWait(func() {
 		newBtn.Enable()
 	})
-	apiUrl := "https://api.github.com/repos/cwxsss/helium_plus/releases?per_page=10"
+	apiUrl := "https://api.github.com/repos/cwxsss/helium_update/releases?per_page=10"
 	client, reqUrl := setProxy(sd, apiUrl)
 	response, err := client.Get(reqUrl)
 	if err != nil {

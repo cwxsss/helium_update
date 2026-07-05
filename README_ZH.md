@@ -74,7 +74,7 @@ fyne-cross windows -arch=amd64
 3. 创建 Release，例如：
 
 ```powershell
-gh release create v0.1.16 --repo cwxsss/helium_plus --target <commit> --title "helium_updater v0.1.16" --notes "Release notes"
+gh release create v0.1.17 --repo cwxsss/helium_update --target <commit> --title "helium_updater v0.1.17" --notes "Release notes"
 ```
 
 创建 Release 后，Actions 会自动打包，并将产物上传到 Release：
