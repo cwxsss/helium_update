@@ -205,32 +205,47 @@ func unzip(zipFile string, filterNames ...string) error {
 }
 
 // 7z解压缩
-func UnCompress7z(filePath, targetDir string) {
+func UnCompress7z(filePath, targetDir string) error {
 	r, err := sevenzip.OpenReader(filePath)
 	if err != nil {
-		logger.Panic(err)
+		logger.Error(err)
+		return err
 	}
 	defer r.Close()
 	for _, file := range r.File {
 		rc, err := file.Open()
 		if err != nil {
-			logger.Panic(err)
+			logger.Error(err)
+			return err
 		}
 		defer rc.Close()
 		fp := path.Join(targetDir, file.Name)
 		if file.FileInfo().IsDir() {
-			os.MkdirAll(fp, os.ModePerm)
+			if err = os.MkdirAll(fp, os.ModePerm); err != nil {
+				logger.Error(err)
+				return err
+			}
 		} else {
+			if err = os.MkdirAll(path.Dir(fp), os.ModePerm); err != nil {
+				logger.Error(err)
+				return err
+			}
 			outputFile, err := os.Create(fp)
 			if err != nil {
-				logger.Panic(err)
+				logger.Error(err)
+				return err
 			}
 			defer outputFile.Close()
 			buf := make([]byte, 1*1024*1024)
-			_, err = io.CopyBuffer(outputFile, rc, buf)
+			if _, err = io.CopyBuffer(outputFile, rc, buf); err != nil {
+				logger.Error(err)
+				return err
+			}
 			//_, err = io.Copy(outputFile, rc)
 		}
 	}
+	logger.Debug("7z extract complete.")
+	return nil
 }
 
 func UnCompress7zFilter(filePath, targetDir, filterName string) error {

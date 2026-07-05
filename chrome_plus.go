@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -190,21 +191,39 @@ func installPlus(data *SettingsData, win fyne.Window) {
 	go func() {
 		err := <-dl.Done
 		if err != nil {
-			logger.Errorf("Chrome++ 下载失败: %v", err)
-			plusDownloadError.Store(true)
-			fyne.DoAndWait(func() { plusDownloadProgress.SetValue(0) })
-			data.plusProcessStatus.Set(false)
-			data.plusBtnStatus.Set(false)
+			failPlusInstall(data, err)
 			return
 		}
 
-		UnCompress7zFilter(fileName, parentPath, plusArch)
-		os.Rename(filepath.Join(parentPath, plusArch, "App", "version.dll"), path.Join(parentPath, "version.dll"))
+		tempDir, err := os.MkdirTemp(parentPath, ".chrome_plus_extract_")
+		if err != nil {
+			failPlusInstall(data, err)
+			return
+		}
+		defer os.RemoveAll(tempDir)
+
+		if err = UnCompress7z(fileName, tempDir); err != nil {
+			failPlusInstall(data, err)
+			return
+		}
+		versionPath, err := findChromePlusExtractedFile(tempDir, "version.dll", plusArch)
+		if err != nil {
+			failPlusInstall(data, err)
+			return
+		}
+		if err = copyFile(versionPath, path.Join(parentPath, "version.dll")); err != nil {
+			failPlusInstall(data, err)
+			return
+		}
 		if !fileExist(path.Join(parentPath, "chrome++.ini")) {
-			os.Rename(filepath.Join(parentPath, plusArch, "App", "chrome++.ini"), path.Join(parentPath, "chrome++.ini"))
+			if iniPath, err := findChromePlusExtractedFile(tempDir, "chrome++.ini", plusArch); err == nil {
+				if err = copyFile(iniPath, path.Join(parentPath, "chrome++.ini")); err != nil {
+					failPlusInstall(data, err)
+					return
+				}
+			}
 		}
 		os.Remove(fileName)
-		os.RemoveAll(filepath.Join(parentPath, plusArch))
 		fyne.DoAndWait(func() { plusDownloadProgress.SetValue(1) })
 		defer data.oldPlusVer.Set(getString(data.curPlusVer))
 		defer data.plusProcessStatus.Set(false)
@@ -214,6 +233,61 @@ func installPlus(data *SettingsData, win fyne.Window) {
 
 	dl.Start()
 }
+
+func failPlusInstall(data *SettingsData, err error) {
+	logger.Errorf("Chrome++ install failed: %v", err)
+	plusDownloadError.Store(true)
+	fyne.DoAndWait(func() { plusDownloadProgress.SetValue(0) })
+	data.plusProcessStatus.Set(false)
+	data.plusBtnStatus.Set(false)
+}
+
+func findChromePlusExtractedFile(root, fileName, arch string) (string, error) {
+	var candidates []string
+	err := filepath.WalkDir(root, func(p string, d os.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() || !strings.EqualFold(filepath.Base(p), fileName) {
+			return nil
+		}
+		candidates = append(candidates, p)
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	if len(candidates) == 0 {
+		return "", fmt.Errorf("%s not found in Chrome++ package", fileName)
+	}
+	sort.SliceStable(candidates, func(i, j int) bool {
+		return chromePlusCandidateScore(candidates[i], arch) < chromePlusCandidateScore(candidates[j], arch)
+	})
+	return candidates[0], nil
+}
+
+func chromePlusCandidateScore(p, arch string) int {
+	hasArch := hasPathComponent(p, arch) || hasPathComponent(p, "amd64")
+	hasApp := hasPathComponent(p, "App")
+	switch {
+	case hasArch && hasApp:
+		return 0
+	case hasArch:
+		return 1
+	default:
+		return 2
+	}
+}
+
+func hasPathComponent(p, component string) bool {
+	for _, part := range strings.Split(filepath.Clean(p), string(os.PathSeparator)) {
+		if strings.EqualFold(part, component) {
+			return true
+		}
+	}
+	return false
+}
+
 func setProxy(sd *SettingsData, reqUrl string) (*http.Client, string) {
 	return newHTTPClientWithProxy(sd, 5*time.Second), rewriteWithGithubProxy(sd, reqUrl)
 }

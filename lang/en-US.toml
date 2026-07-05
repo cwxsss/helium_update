@@ -38,7 +38,7 @@ MarkdownMsg = """
 ---
 
 * Helium is downloaded from [imputnet/helium-windows](https://github.com/imputnet/helium-windows), using the Windows x64 full installer.
-* Chrome++ Next is downloaded from [Bush2021/chrome_plus](https://github.com/Bush2021/chrome_plus) and installed next to `helium.exe`.
+* Chrome++ Next is downloaded from [cwxsss/helium_plus](https://github.com/cwxsss/helium_plus) and installed next to `helium.exe`.
 * Point the directory to the `Application` folder that contains `helium.exe`; for a first install, choose an empty folder and the updater will create a portable layout."""
 BaseSettingLabel = "Basic settings"
 ThemeLabel = "Theme"

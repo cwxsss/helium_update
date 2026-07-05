@@ -38,7 +38,7 @@ MarkdownMsg = """
 ---
 
 * Helium 主程序从 [imputnet/helium-windows](https://github.com/imputnet/helium-windows) 获取 Windows x64 完整安装包。
-* Chrome++ Next 从 [Bush2021/chrome_plus](https://github.com/Bush2021/chrome_plus) 获取，并安装到 Helium 的 `Application` 目录。
+* Chrome++ Next 从 [cwxsss/helium_plus](https://github.com/cwxsss/helium_plus) 获取，并安装到 Helium 的 `Application` 目录。
 * 请将目录指向包含 `helium.exe` 的 `Application` 文件夹；首次安装时可选择一个空目录，程序会自动创建便携结构。<br>"""
 BaseSettingLabel = "基础设置"
 ThemeLabel = "主题"
