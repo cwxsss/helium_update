@@ -22,18 +22,34 @@ import (
 func chromePlusScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 	var githubReleaseMap map[string]GithubRelease
 	var versionList []string
+	var downBtn *widget.Button
+	var versionSelect *widget.Select
+	plusSourceRepos := map[string]string{
+		"cwxsss/helium_plus":   "cwxsss/helium_plus",
+		"Bush2021/chrome_plus": "Bush2021/chrome_plus",
+	}
+	selectedSource := normalizeChromePlusSource(getString(data.chromePlus))
+	_ = data.chromePlus.Set(selectedSource)
 	chromePlusRadio := widget.NewRadioGroup([]string{
-		"Bush2021"}, func(value string) {
+		"cwxsss/helium_plus",
+		"Bush2021/chrome_plus",
+	}, func(value string) {
 		data.chromePlus.Set(value)
+		data.curPlusVer.Set("-")
+		data.plusDownloadUrl.Set("")
+		data.plusFileSizeRaw.Set(0)
+		versionSelect.ClearSelected()
+		versionSelect.SetOptions([]string{})
+		versionSelect.Disable()
+		downBtn.Disable()
 	})
-	versionSelect := widget.NewSelect([]string{}, func(ver string) {
+	versionSelect = widget.NewSelect([]string{}, func(ver string) {
 		setPlusVer(data, ver, githubReleaseMap)
 	})
 	versionSelect.PlaceHolder = LoadString("VersionSelectPlaceHolder")
 	versionSelect.Disable()
-	chromePlusRadio.Selected = getString(data.chromePlus)
-	chromePlusRadio.Disable()
-	downBtn := widget.NewButtonWithIcon(LoadString("InstallBtnLabel"), theme.DownloadIcon(), func() {
+	chromePlusRadio.Selected = selectedSource
+	downBtn = widget.NewButtonWithIcon(LoadString("InstallBtnLabel"), theme.DownloadIcon(), func() {
 		ov, _ := data.oldPlusVer.Get()
 		cv, _ := data.curPlusVer.Get()
 		if cv == ov && fileExist(path.Join(getString(data.installPath), "version.dll")) {
@@ -50,7 +66,15 @@ func chromePlusScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 	})
 	checkBtn := widget.NewButtonWithIcon(LoadString("CheckBtnLabel"), theme.SearchIcon(), func() {
 		var err error
-		githubReleaseMap, versionList, err = getChromePlusInfo(data)
+		chromePlusRadio.Disable()
+		checkBtn.Disable()
+		checkBtn.SetText(LoadString("CheckBtnLabel") + "...")
+		data.curPlusVer.Set("-")
+		downBtn.Disable()
+		githubReleaseMap, versionList, err = getChromePlusInfo(data, plusSourceRepos[getString(data.chromePlus)])
+		chromePlusRadio.Enable()
+		checkBtn.Enable()
+		checkBtn.SetText(LoadString("CheckBtnLabel"))
 		if err != nil {
 			alertInfo(LoadString("UpdateErrMsg"), win)
 		} else {
@@ -79,8 +103,9 @@ func chromePlusScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 	_ = data.oldPlusVer.Set(oldPlusVer)
 	form := widget.NewForm(
 		&widget.FormItem{Text: LoadString("NowVerLabel"), Widget: widget.NewLabelWithData(data.oldPlusVer)},
-		&widget.FormItem{Text: LoadString("LatestVerLabel"), Widget: versionSelect},
-		&widget.FormItem{Text: LoadString("BranchLabel"), Widget: chromePlusRadio},
+		&widget.FormItem{Text: LoadString("LatestVerLabel"), Widget: curVerLabel},
+		&widget.FormItem{Text: LoadString("VersionSelectLabel"), Widget: versionSelect},
+		&widget.FormItem{Text: LoadString("PlusSourceLabel"), Widget: chromePlusRadio},
 	)
 	rich := widget.NewRichTextFromMarkdown(LoadString("MarkdownMsg"))
 	rich.Wrapping = fyne.TextWrapWord
@@ -109,20 +134,34 @@ func chromePlusScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 	), container.NewVBox(plusDownloadProgress, container.NewGridWithColumns(2, checkBtn, downBtn)))
 }
 
+func normalizeChromePlusSource(source string) string {
+	switch source {
+	case "Bush2021", "Bush2021/chrome_plus":
+		return "Bush2021/chrome_plus"
+	case "cwxsss", "cwxsss/helium_plus":
+		return "cwxsss/helium_plus"
+	default:
+		return "cwxsss/helium_plus"
+	}
+}
+
 func setPlusVer(data *SettingsData, ver string, releaseMap map[string]GithubRelease) {
 	plusInfo := releaseMap[ver]
 	data.curPlusVer.Set(plusInfo.TagName)
 	for _, asset := range plusInfo.Assets {
 		name := strings.ToLower(asset.Name)
-		if strings.Contains(name, "x64") || strings.Contains(name, "amd64") {
+		if isChromePlusAssetName(name) && (strings.Contains(name, "x64") || strings.Contains(name, "amd64")) {
 			data.plusDownloadUrl.Set(asset.BrowserDownloadURL)
 			data.plusFileSizeRaw.Set(int(asset.Size))
 			return
 		}
 	}
-	if len(plusInfo.Assets) > 0 {
-		data.plusDownloadUrl.Set(plusInfo.Assets[0].BrowserDownloadURL)
-		data.plusFileSizeRaw.Set(int(plusInfo.Assets[0].Size))
+	for _, asset := range plusInfo.Assets {
+		if isChromePlusAssetName(strings.ToLower(asset.Name)) {
+			data.plusDownloadUrl.Set(asset.BrowserDownloadURL)
+			data.plusFileSizeRaw.Set(int(asset.Size))
+			return
+		}
 	}
 }
 
@@ -178,8 +217,11 @@ func setProxy(sd *SettingsData, reqUrl string) (*http.Client, string) {
 	return newHTTPClientWithProxy(sd, 5*time.Second), rewriteWithGithubProxy(sd, reqUrl)
 }
 
-func getChromePlusInfo(sd *SettingsData) (map[string]GithubRelease, []string, error) {
-	apiUrl := "https://api.github.com/repos/Bush2021/chrome_plus/releases?per_page=10"
+func getChromePlusInfo(sd *SettingsData, repo string) (map[string]GithubRelease, []string, error) {
+	if repo == "" {
+		repo = "cwxsss/helium_plus"
+	}
+	apiUrl := fmt.Sprintf("https://api.github.com/repos/%s/releases?per_page=10", repo)
 	client, reqUrl := setProxy(sd, apiUrl)
 	response, err := client.Get(reqUrl)
 	if err != nil {
@@ -203,9 +245,28 @@ func getChromePlusInfo(sd *SettingsData) (map[string]GithubRelease, []string, er
 	result := make(map[string]GithubRelease)
 	versionList := make([]string, 0)
 	for _, item := range githubReleases {
+		if !hasChromePlusAsset(item) {
+			continue
+		}
 		result[item.TagName] = item
 		versionList = append(versionList, item.TagName)
 	}
-	logger.Debugf("Chrome++ versions:%v", versionList)
+	logger.Debugf("Chrome++ source:%s versions:%v", repo, versionList)
 	return result, versionList, err
+}
+
+func hasChromePlusAsset(release GithubRelease) bool {
+	for _, asset := range release.Assets {
+		if isChromePlusAssetName(strings.ToLower(asset.Name)) {
+			return true
+		}
+	}
+	return false
+}
+
+func isChromePlusAssetName(name string) bool {
+	return strings.HasSuffix(name, ".7z") &&
+		(strings.Contains(name, "helium++") ||
+			strings.Contains(name, "chrome++") ||
+			strings.Contains(name, "chrome_plus"))
 }

@@ -169,7 +169,7 @@ func createSettings() *SettingsData {
 	curPlusVer.Set("-")
 	oldPlusVer.Set("-")
 	chromePlus := binding.NewString()
-	chromePlus.Set("Bush2021")
+	chromePlus.Set("cwxsss/helium_plus")
 	plusDownloadUrl := binding.NewString()
 	plusFileSizeRaw := binding.NewInt()
 	plusBtnStatus := binding.NewBool()
