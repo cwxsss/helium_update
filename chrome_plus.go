@@ -22,6 +22,7 @@ import (
 func chromePlusScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 	var githubReleaseMap map[string]GithubRelease
 	var versionList []string
+	var checkBtn *widget.Button
 	var downBtn *widget.Button
 	var versionSelect *widget.Select
 	plusSourceRepos := map[string]string{
@@ -64,7 +65,7 @@ func chromePlusScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 			}
 		}
 	})
-	checkBtn := widget.NewButtonWithIcon(LoadString("CheckBtnLabel"), theme.SearchIcon(), func() {
+	checkBtn = widget.NewButtonWithIcon(LoadString("CheckBtnLabel"), theme.SearchIcon(), func() {
 		var err error
 		chromePlusRadio.Disable()
 		checkBtn.Disable()
