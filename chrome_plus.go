@@ -239,7 +239,7 @@ func scheduleVersionReplacement(sourcePath, targetPath, archivePath, tempDir str
 		return err
 	}
 
-	cmd := exec.Command("cmd.exe", "/D", "/S", "/C", fmt.Sprintf(`call "%s"`, scriptPath))
+	cmd := exec.Command("cmd.exe", replacementCommandArgs(scriptPath)...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
 	if err = cmd.Start(); err != nil {
 		_ = os.Remove(scriptPath)
@@ -248,6 +248,10 @@ func scheduleVersionReplacement(sourcePath, targetPath, archivePath, tempDir str
 
 	logger.Infof("scheduled version.dll replacement: %s", targetPath)
 	return nil
+}
+
+func replacementCommandArgs(scriptPath string) []string {
+	return []string{"/D", "/C", fmt.Sprintf(`call "%s"`, scriptPath)}
 }
 
 func versionReplacementScript(sourcePath, targetPath, archivePath, tempDir, updaterPath string) string {

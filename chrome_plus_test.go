@@ -1,6 +1,7 @@
 package main
 
 import (
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -42,5 +43,13 @@ func TestVersionReplacementScriptOnlyMovesVersionDLL(t *testing.T) {
 	}
 	if strings.Contains(strings.ToLower(script), "chrome++.ini") {
 		t.Fatal("replacement script must not modify chrome++.ini")
+	}
+}
+
+func TestReplacementCommandArgsDoNotUseSlashS(t *testing.T) {
+	got := replacementCommandArgs(`C:\temp\replace.cmd`)
+	want := []string{"/D", "/C", `call "C:\temp\replace.cmd"`}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("replacementCommandArgs() = %#v, want %#v", got, want)
 	}
 }
