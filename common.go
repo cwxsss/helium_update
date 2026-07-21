@@ -331,13 +331,17 @@ func getStringList(v binding.StringList) []string {
 	return gv
 }
 func isProcessExist(appPath string) bool {
-	// Normalize the input path
-	appPath = filepath.Clean(appPath)
+	return isProcessNameRunning(filepath.Base(appPath))
+}
 
-	// Create a snapshot of all processes
+func executableNameMatches(actualName, expectedName string) bool {
+	return strings.EqualFold(actualName, expectedName)
+}
+
+func isProcessNameRunning(executableName string) bool {
 	snapshot, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
 	if err != nil {
-		fmt.Printf("CreateToolhelp32Snapshot failed: %v\n", err)
+		logger.Errorf("create process snapshot failed: %v", err)
 		return false
 	}
 	defer windows.CloseHandle(snapshot)
@@ -345,41 +349,25 @@ func isProcessExist(appPath string) bool {
 	var pe windows.ProcessEntry32
 	pe.Size = uint32(unsafe.Sizeof(pe))
 
-	// Get the first process
 	err = windows.Process32First(snapshot, &pe)
 	if err != nil {
-		fmt.Printf("Process32First failed: %v\n", err)
+		logger.Errorf("get first process failed: %v", err)
 		return false
 	}
 
 	for {
-		// Open the process to query its full path
-		hProcess, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pe.ProcessID)
-		if err == nil {
-			// Get the full executable path
-			var path [windows.MAX_PATH]uint16
-			pathLen := uint32(len(path))
-			err = windows.QueryFullProcessImageName(hProcess, 0, &path[0], &pathLen)
-			windows.CloseHandle(hProcess)
-			if err == nil {
-				// Convert UTF16 path to string and normalize
-				exePath := windows.UTF16ToString(path[:pathLen])
-				exePath = filepath.Clean(exePath)
-
-				// Compare paths (case-insensitive)
-				if strings.EqualFold(appPath, exePath) {
-					return true
-				}
-			}
+		processName := windows.UTF16ToString(pe.ExeFile[:])
+		if executableNameMatches(processName, executableName) {
+			return true
 		}
 
-		// Move to the next process
 		err = windows.Process32Next(snapshot, &pe)
 		if err != nil {
 			if err == windows.ERROR_NO_MORE_FILES {
 				break
 			}
-			fmt.Printf("Process32Next failed: %v\n", err)
+			logger.Errorf("get next process failed: %v", err)
+			break
 		}
 	}
 

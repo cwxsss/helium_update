@@ -206,6 +206,10 @@ func installPlus(data *SettingsData, win fyne.Window) {
 			failPlusInstall(data, err)
 			return
 		}
+		if isProcessExist(chromeExecutablePath(parentPath)) {
+			failPlusInstall(data, fmt.Errorf("chrome.exe is still running"))
+			return
+		}
 		versionPath, err := findChromePlusExtractedFile(tempDir, "version.dll", plusArch)
 		if err != nil {
 			failPlusInstall(data, err)

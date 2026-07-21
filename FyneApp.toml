@@ -4,5 +4,5 @@ Website = "https://github.com/cwxsss/helium_update"
   Icon = "assets/img/helium_updater.png"
   Name = "helium_updater"
   ID = "com.github.cwxsss.helium_updater"
-  Version = "0.1.19"
+  Version = "0.1.20"
   Build = 0

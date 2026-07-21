@@ -17,3 +17,9 @@ func TestChromeExecutablePathUsesChromeExe(t *testing.T) {
 		t.Fatalf("chromeExecutablePath() = %q, want %q", got, want)
 	}
 }
+
+func TestExecutableNameMatchesIgnoresCase(t *testing.T) {
+	if !executableNameMatches("CHROME.EXE", "chrome.exe") {
+		t.Fatal("executableNameMatches() should match chrome.exe without case sensitivity")
+	}
+}
