@@ -255,6 +255,42 @@ func UnCompress7z(filePath, targetDir string) error {
 	return nil
 }
 
+func UnCompress7zFile(filePath, targetDir, fileName string) error {
+	r, err := sevenzip.OpenReader(filePath)
+	if err != nil {
+		logger.Error(err)
+		return err
+	}
+	defer r.Close()
+
+	for _, file := range r.File {
+		if file.FileInfo().IsDir() || !strings.EqualFold(filepath.Base(file.Name), fileName) {
+			continue
+		}
+		rc, err := file.Open()
+		if err != nil {
+			logger.Error(err)
+			return err
+		}
+		defer rc.Close()
+
+		if err = os.MkdirAll(targetDir, os.ModePerm); err != nil {
+			return err
+		}
+		outputFile, err := os.Create(filepath.Join(targetDir, fileName))
+		if err != nil {
+			return err
+		}
+		defer outputFile.Close()
+		if _, err = io.Copy(outputFile, rc); err != nil {
+			return err
+		}
+		return outputFile.Close()
+	}
+
+	return fmt.Errorf("%s not found in archive", fileName)
+}
+
 func UnCompress7zFilter(filePath, targetDir, filterName string) error {
 	r, err := sevenzip.OpenReader(filePath)
 	if err != nil {

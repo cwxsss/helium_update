@@ -5,11 +5,13 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"fyne.io/fyne/v2"
@@ -200,14 +202,15 @@ func installPlus(data *SettingsData, win fyne.Window) {
 			failPlusInstall(data, err)
 			return
 		}
-		defer os.RemoveAll(tempDir)
+		cleanupTempDir := true
+		defer func() {
+			if cleanupTempDir {
+				_ = os.RemoveAll(tempDir)
+			}
+		}()
 
-		if err = UnCompress7z(fileName, tempDir); err != nil {
+		if err = UnCompress7zFile(fileName, tempDir, "version.dll"); err != nil {
 			failPlusInstall(data, err)
-			return
-		}
-		if isProcessExist(chromeExecutablePath(parentPath)) {
-			failPlusInstall(data, fmt.Errorf("chrome.exe is still running"))
 			return
 		}
 		versionPath, err := findChromePlusExtractedFile(tempDir, "version.dll", plusArch)
@@ -215,27 +218,68 @@ func installPlus(data *SettingsData, win fyne.Window) {
 			failPlusInstall(data, err)
 			return
 		}
-		if err = copyFile(versionPath, path.Join(parentPath, "version.dll")); err != nil {
+		if err = scheduleVersionReplacement(versionPath, path.Join(parentPath, "version.dll"), fileName, tempDir); err != nil {
 			failPlusInstall(data, err)
 			return
 		}
-		if !fileExist(path.Join(parentPath, "chrome++.ini")) {
-			if iniPath, err := findChromePlusExtractedFile(tempDir, "chrome++.ini", plusArch); err == nil {
-				if err = copyFile(iniPath, path.Join(parentPath, "chrome++.ini")); err != nil {
-					failPlusInstall(data, err)
-					return
-				}
-			}
-		}
-		os.Remove(fileName)
-		fyne.DoAndWait(func() { plusDownloadProgress.SetValue(1) })
-		defer data.oldPlusVer.Set(getString(data.curPlusVer))
-		defer data.plusProcessStatus.Set(false)
-		defer data.plusBtnStatus.Set(false)
-		alertInfo(LoadString("InstalledMsg"), win)
+		cleanupTempDir = false
+		fyne.DoAndWait(fyne.CurrentApp().Quit)
 	}()
 
 	dl.Start()
+}
+
+func scheduleVersionReplacement(sourcePath, targetPath, archivePath, tempDir string) error {
+	updaterPath, err := os.Executable()
+	if err != nil {
+		return err
+	}
+	scriptPath := filepath.Join(filepath.Dir(updaterPath), fmt.Sprintf(".replace_version_%d.cmd", time.Now().UnixNano()))
+	if err = os.WriteFile(scriptPath, []byte(versionReplacementScript(sourcePath, targetPath, archivePath, tempDir, updaterPath)), 0600); err != nil {
+		return err
+	}
+
+	cmd := exec.Command("cmd.exe", "/D", "/S", "/C", fmt.Sprintf(`call "%s"`, scriptPath))
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	if err = cmd.Start(); err != nil {
+		_ = os.Remove(scriptPath)
+		return err
+	}
+
+	logger.Infof("scheduled version.dll replacement: %s", targetPath)
+	return nil
+}
+
+func versionReplacementScript(sourcePath, targetPath, archivePath, tempDir, updaterPath string) string {
+	return fmt.Sprintf(
+		"@echo off\r\n"+
+			"setlocal\r\n"+
+			"set \"source=%s\"\r\n"+
+			"set \"target=%s\"\r\n"+
+			"set \"archive=%s\"\r\n"+
+			"set \"temp_dir=%s\"\r\n"+
+			"set \"updater=%s\"\r\n"+
+			"set /a attempts=0\r\n"+
+			":retry\r\n"+
+			"move /Y \"%%source%%\" \"%%target%%\" >nul 2>&1\r\n"+
+			"if not errorlevel 1 goto success\r\n"+
+			"set /a attempts+=1\r\n"+
+			"if %%attempts%% GEQ 60 goto failure\r\n"+
+			"timeout /t 1 /nobreak >nul\r\n"+
+			"goto retry\r\n"+
+			":success\r\n"+
+			"del /q \"%%archive%%\" >nul 2>&1\r\n"+
+			"rmdir /s /q \"%%temp_dir%%\" >nul 2>&1\r\n"+
+			"start \"\" \"%%updater%%\"\r\n"+
+			"del \"%%~f0\"\r\n"+
+			"exit /b 0\r\n"+
+			":failure\r\n"+
+			"> \"%%target%%.update-failed.txt\" echo Failed to replace version.dll because it is still in use.\r\n"+
+			"rmdir /s /q \"%%temp_dir%%\" >nul 2>&1\r\n"+
+			"del \"%%~f0\"\r\n"+
+			"exit /b 1\r\n",
+		sourcePath, targetPath, archivePath, tempDir, updaterPath,
+	)
 }
 
 func failPlusInstall(data *SettingsData, err error) {
