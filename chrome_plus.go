@@ -5,14 +5,11 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"sync/atomic"
-	"syscall"
-	"time"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/container"
@@ -218,72 +215,26 @@ func installPlus(data *SettingsData, win fyne.Window) {
 			failPlusInstall(data, err)
 			return
 		}
-		if err = scheduleVersionReplacement(versionPath, path.Join(parentPath, "version.dll"), fileName, tempDir); err != nil {
+		if err = copyFile(versionPath, pendingVersionDLLPath(parentPath)); err != nil {
 			failPlusInstall(data, err)
 			return
 		}
-		cleanupTempDir = false
-		fyne.DoAndWait(fyne.CurrentApp().Quit)
+		if err = os.Remove(fileName); err != nil && !os.IsNotExist(err) {
+			logger.Warnf("failed to remove Chrome++ archive %s: %v", fileName, err)
+		}
+		fyne.DoAndWait(func() {
+			plusDownloadProgress.SetValue(plusDownloadProgress.Max)
+			alertInfo(LoadString("PlusReadyForManualReplaceMsg"), win)
+		})
+		data.plusProcessStatus.Set(false)
+		data.plusBtnStatus.Set(false)
 	}()
 
 	dl.Start()
 }
 
-func scheduleVersionReplacement(sourcePath, targetPath, archivePath, tempDir string) error {
-	updaterPath, err := os.Executable()
-	if err != nil {
-		return err
-	}
-	scriptPath := filepath.Join(filepath.Dir(updaterPath), fmt.Sprintf(".replace_version_%d.cmd", time.Now().UnixNano()))
-	if err = os.WriteFile(scriptPath, []byte(versionReplacementScript(sourcePath, targetPath, archivePath, tempDir, updaterPath)), 0600); err != nil {
-		return err
-	}
-
-	cmd := exec.Command("cmd.exe", replacementCommandArgs(scriptPath)...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
-	if err = cmd.Start(); err != nil {
-		_ = os.Remove(scriptPath)
-		return err
-	}
-
-	logger.Infof("scheduled version.dll replacement: %s", targetPath)
-	return nil
-}
-
-func replacementCommandArgs(scriptPath string) []string {
-	return []string{"/D", "/C", fmt.Sprintf(`call "%s"`, scriptPath)}
-}
-
-func versionReplacementScript(sourcePath, targetPath, archivePath, tempDir, updaterPath string) string {
-	return fmt.Sprintf(
-		"@echo off\r\n"+
-			"setlocal\r\n"+
-			"set \"source=%s\"\r\n"+
-			"set \"target=%s\"\r\n"+
-			"set \"archive=%s\"\r\n"+
-			"set \"temp_dir=%s\"\r\n"+
-			"set \"updater=%s\"\r\n"+
-			"set /a attempts=0\r\n"+
-			":retry\r\n"+
-			"move /Y \"%%source%%\" \"%%target%%\" >nul 2>&1\r\n"+
-			"if not errorlevel 1 goto success\r\n"+
-			"set /a attempts+=1\r\n"+
-			"if %%attempts%% GEQ 60 goto failure\r\n"+
-			"timeout /t 1 /nobreak >nul\r\n"+
-			"goto retry\r\n"+
-			":success\r\n"+
-			"del /q \"%%archive%%\" >nul 2>&1\r\n"+
-			"rmdir /s /q \"%%temp_dir%%\" >nul 2>&1\r\n"+
-			"start \"\" \"%%updater%%\"\r\n"+
-			"del \"%%~f0\"\r\n"+
-			"exit /b 0\r\n"+
-			":failure\r\n"+
-			"> \"%%target%%.update-failed.txt\" echo Failed to replace version.dll because it is still in use.\r\n"+
-			"rmdir /s /q \"%%temp_dir%%\" >nul 2>&1\r\n"+
-			"del \"%%~f0\"\r\n"+
-			"exit /b 1\r\n",
-		sourcePath, targetPath, archivePath, tempDir, updaterPath,
-	)
+func pendingVersionDLLPath(installPath string) string {
+	return filepath.Join(installPath, "version.dll.new")
 }
 
 func failPlusInstall(data *SettingsData, err error) {

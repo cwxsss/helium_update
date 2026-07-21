@@ -6,8 +6,8 @@ Portable Helium updater for Windows x64, adapted from `libsgh/chrome_updater` an
 
 - Windows x64 only.
 - Downloads the latest x64 Helium package from `imputnet/helium-windows`.
-- Extracts and normalizes the official package into a portable layout whose target is the `Application` folder containing `helium.exe`.
-- Installs Chrome++ Next next to `helium.exe` as `version.dll` plus `chrome++.ini`.
+- Extracts and normalizes the official package into a portable layout whose target is the `Application` folder containing `chrome.exe`.
+- Downloads only `version.dll` from the Helium++ package and writes it as `version.dll.new` next to `chrome.exe`; it never changes `chrome++.ini`.
 - Supports GitHub proxy settings, self-update checks, and tray auto-checks.
 
 ## Usage
@@ -15,7 +15,7 @@ Portable Helium updater for Windows x64, adapted from `libsgh/chrome_updater` an
 1. For a first install, choose an empty folder. The updater creates `Application`, `Cache`, and `Data`, then installs Helium into `Application`.
 2. For an existing official install, select the `Application` folder, for example `%LOCALAPPDATA%\imput\Helium\Application`.
 3. Configuration is stored at `%APPDATA%\helium_updater\config.json`, or next to `helium_updater.exe` when a same-folder config is present.
-4. Helium and Chrome++ can be updated independently.
+4. Helium and Helium++ can be updated independently. After a Helium++ download, close Helium and this updater, then manually replace `version.dll` with `version.dll.new` in the `Application` directory.
 
 ## Notes
 

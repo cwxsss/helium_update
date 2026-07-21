@@ -1,8 +1,6 @@
 package main
 
 import (
-	"reflect"
-	"strings"
 	"testing"
 )
 
@@ -28,28 +26,10 @@ func TestExecutableNameMatchesIgnoresCase(t *testing.T) {
 	}
 }
 
-func TestVersionReplacementScriptOnlyMovesVersionDLL(t *testing.T) {
-	script := versionReplacementScript(
-		`C:\temp\version.dll`,
-		`D:\Helium\Application\version.dll`,
-		`D:\Helium\Application\Helium++_v1.18.1_x64.7z`,
-		`D:\Helium\Application\.chrome_plus_extract`,
-		`D:\Helium\Application\helium_updater.exe`,
-	)
-	if !strings.Contains(script, `set "source=C:\temp\version.dll"`) ||
-		!strings.Contains(script, `set "target=D:\Helium\Application\version.dll"`) ||
-		!strings.Contains(script, `move /Y "%source%" "%target%"`) {
-		t.Fatal("replacement script does not move version.dll to the installation directory")
-	}
-	if strings.Contains(strings.ToLower(script), "chrome++.ini") {
-		t.Fatal("replacement script must not modify chrome++.ini")
-	}
-}
-
-func TestReplacementCommandArgsDoNotUseSlashS(t *testing.T) {
-	got := replacementCommandArgs(`C:\temp\replace.cmd`)
-	want := []string{"/D", "/C", `call "C:\temp\replace.cmd"`}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("replacementCommandArgs() = %#v, want %#v", got, want)
+func TestPendingVersionDLLPathKeepsExistingDLLUntouched(t *testing.T) {
+	got := pendingVersionDLLPath(`D:\Helium\Application`)
+	want := `D:\Helium\Application\version.dll.new`
+	if got != want {
+		t.Fatalf("pendingVersionDLLPath() = %q, want %q", got, want)
 	}
 }

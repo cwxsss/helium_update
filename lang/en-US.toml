@@ -17,7 +17,7 @@ Download95Msg = "Download complete. Extracting and installing..."
 DownloadNotStartedMsg = "Download not started"
 DownloadingMsg = "Downloading...%.2f MB / %s"
 CheckBtnLabel = "Check"
-InstallBtnLabel = "Download and install"
+InstallBtnLabel = "Download update"
 NoNeedUpdateMsg = "Already up to date."
 HeliumRunningMsg = "Helium is running. Please close it and try again."
 HeliumUpdateRunningMsg = "Automatic update is running. Please try again later."
@@ -30,7 +30,8 @@ DevVerOption = "Dev"
 CanaryVerOption = "Canary"
 VersionSelectPlaceHolder = "Select"
 UpdateErrMsg = "Update failed. Please check your network or proxy."
-PlusDownloadedMsg = "Download complete. Extracting and installing..."
+PlusDownloadedMsg = "Download complete. Extracting version.dll..."
+PlusReadyForManualReplaceMsg = "version.dll.new is ready in the Application folder. Close Helium and this updater, then replace version.dll with version.dll.new manually. chrome++.ini is not changed."
 PlusDownloadingMsg = "Downloading..."
 MarkdownMsg = """
 ### Notes
@@ -38,8 +39,9 @@ MarkdownMsg = """
 ---
 
 * Helium is downloaded from [imputnet/helium-windows](https://github.com/imputnet/helium-windows), using the Windows x64 full installer.
-* Chrome++ Next is downloaded from [cwxsss/helium_plus](https://github.com/cwxsss/helium_plus) and installed next to `helium.exe`.
-* Point the directory to the `Application` folder that contains `helium.exe`; for a first install, choose an empty folder and the updater will create a portable layout."""
+* Helium++ is downloaded from [cwxsss/helium_plus](https://github.com/cwxsss/helium_plus) as `version.dll.new` next to `chrome.exe`.
+* Close Helium and this updater, then replace `version.dll` manually with `version.dll.new`. The updater never changes `chrome++.ini`.
+* Point the directory to the `Application` folder that contains `chrome.exe`; for a first install, choose an empty folder and the updater will create a portable layout."""
 BaseSettingLabel = "Basic settings"
 ThemeLabel = "Theme"
 LangLabel = "Language"
