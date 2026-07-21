@@ -58,7 +58,7 @@ func chromePlusScreen(win fyne.Window, data *SettingsData) fyne.CanvasObject {
 			alertInfo(LoadString("NoNeedUpdateMsg"), win)
 		} else {
 			parentPath, _ := data.installPath.Get()
-			heliumInUse := isProcessExist(filepath.Join(parentPath, "helium.exe"))
+			heliumInUse := isProcessExist(chromeExecutablePath(parentPath))
 			if heliumInUse {
 				alertInfo(LoadString("HeliumRunningMsg"), win)
 			} else {

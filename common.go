@@ -34,11 +34,18 @@ import (
 )
 
 var (
-	versionDLL                 = syscall.NewLazyDLL("version.dll")
+	versionDLL                 = syscall.NewLazyDLL(systemVersionDLLPath(os.Getenv("SystemRoot")))
 	procGetFileVersionInfo     = versionDLL.NewProc("GetFileVersionInfoW")
 	procGetFileVersionInfoSize = versionDLL.NewProc("GetFileVersionInfoSizeW")
 	procVerQueryValue          = versionDLL.NewProc("VerQueryValueW")
 )
+
+func systemVersionDLLPath(systemRoot string) string {
+	if systemRoot == "" {
+		systemRoot = `C:\Windows`
+	}
+	return filepath.Join(systemRoot, "System32", "version.dll")
+}
 
 // url转换
 func parseURL(urlStr string) *url.URL {
@@ -378,6 +385,11 @@ func isProcessExist(appPath string) bool {
 
 	return false
 }
+
+func chromeExecutablePath(installPath string) string {
+	return filepath.Join(installPath, "chrome.exe")
+}
+
 func alertInfo(message string, win fyne.Window) {
 	icon := widget.NewIcon(theme.InfoIcon())
 	label := widget.NewLabel(message)
